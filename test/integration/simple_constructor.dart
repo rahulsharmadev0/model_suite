@@ -5,21 +5,20 @@ import 'dart:collection';
 
 import 'package:model_suite/dataclass.dart';
 
-@Data()
-abstract interface class Parent {
-  final Person $father;
-  final Person $mother;
-  // Parent(this.$father, this.$mother);
+enum Gender {
+  male,
+  female,
 }
 
 @Data()
-class Person extends Parent {
+class Person {
   final String name;
   final int age;
   final double height;
   final Map<String, Person> friendsMap$;
   final Set<Person> friendsSet;
   final Set<Person> closeFriendsSet$;
+  final Gender gender;
 }
 
 class Dynamic {
