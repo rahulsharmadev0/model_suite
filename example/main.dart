@@ -20,18 +20,6 @@ class Person2 {
   final int age;
 }
 
-void main() {
-  var person = Person('John', age: 30);
-  person = person.copyWith(age: 31);
-
-  print(person.name); // John
-  print(person.age); // 31
-
-  // Person2 works the same!
-  var person2 = Person2(name: 'John', age: 30);
-  person2 = person2.copyWith(age: 31);
-}
-
 // ---- Advanced usage: Unions ----
 
 class Engine {}
@@ -62,3 +50,15 @@ class Car implements Vehicle {
 }
 
 class Wheel {}
+
+void main() {
+  var person = Person('John', age: 30);
+  person = person.copyWith(age: 31);
+
+  print(person.name); // John
+  print(person.age); // 31
+
+  // Person2 works the same!
+  var person2 = Person2(name: 'John', age: 30);
+  person2 = person2.copyWith(age: 31);
+}

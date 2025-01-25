@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "model_suite",
+      "request": "launch",
+      "type": "dart",
+      "program": "example/main.dart",
+      "args": ["run", "--enable-experiment=macros", "example/main.dart"]
+    }
+  ]
+}
