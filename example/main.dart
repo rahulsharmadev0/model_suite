@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_unused_constructor_parameters
 
-import 'package:dataclass/dataclass.dart';
+import 'package:model_suite/dataclass.dart';
 
 // The usual syntax, based on constructors.
 // We no-longer use "factory" constructors.

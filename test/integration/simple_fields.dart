@@ -1,4 +1,4 @@
-import 'package:dataclass/dataclass.dart';
+import 'package:model_suite/dataclass.dart';
 
 @Data()
 class Simple {

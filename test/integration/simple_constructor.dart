@@ -3,7 +3,7 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:dataclass/dataclass.dart';
+import 'package:model_suite/dataclass.dart';
 
 @Data()
 abstract interface class Parent {
@@ -205,7 +205,7 @@ abstract class DataEvent {}
 //   }) = _Large;
 // }
 
-// Regression test for https://github.com/rrousselGit/Freezed(/issues/131
+// Regression test for https://github.com/rrousselGit/(/issues/131
 @Data()
 class Regression131 extends DataEvent {
   Regression131(String versionName);
@@ -226,7 +226,7 @@ class Assertion {
         assert(b > a);
 }
 
-// // Regression test for https://github.com/rrousselGit/Freezed(/issues/326
+// // Regression test for https://github.com/rrousselGit/(/issues/326
 // @Data()
 // class Doc326 with _$Doc326 {
 //   /// Hello world
@@ -235,7 +235,7 @@ class Assertion {
 //   }) = _Doc326;
 // }
 
-// // Regression test for https://github.com/rrousselGit/Freezed(/issues/317
+// // Regression test for https://github.com/rrousselGit/(/issues/317
 // @Data()
 // class Doc317 with _$Doc317 {
 //   factory Doc317({
@@ -259,7 +259,7 @@ class Assertion {
 //   }) = _Doc;
 // }
 
-/// Regression test for https://github.com/rrousselGit/Freezed(/issues/213
+/// Regression test for https://github.com/rrousselGit/(/issues/213
 @Data()
 class Product {
   const Product({
@@ -275,7 +275,7 @@ class Test {
 
 @Data(constructor: '_internal')
 class Private {
-  // This is the (private) Freezed( constructor
+  // This is the (private) ( constructor
   const Private._internal(
     Iterable<String> items,
   );
@@ -335,7 +335,7 @@ class NoConst {
   NoConst();
 }
 
-// Regression test for https://github.com/rrousselGit/Freezed(/issues/40
+// Regression test for https://github.com/rrousselGit/(/issues/40
 @Data()
 class SecondState {
   const SecondState({
@@ -344,7 +344,7 @@ class SecondState {
   });
 }
 
-// Regression test for https://github.com/rrousselGit/Freezed(/issues/44
+// Regression test for https://github.com/rrousselGit/(/issues/44
 @Data()
 class Static {
   const Static();

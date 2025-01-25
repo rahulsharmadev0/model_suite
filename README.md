@@ -1,19 +1,19 @@
 <a href="https://discord.gg/Bbumvej"><img src="https://img.shields.io/discord/765557403865186374.svg?logo=discord&color=blue" alt="Discord"></a>
 
-Welcome to the Macro version of [Freezed]!  
+Welcome to the Macro version of []!  
 It has been renamed to `dataclass`, for the sake of enabling users to
 temporarily use both `build_runner` and macros.
 
 This is a tool that generates `toString`, `copyWith` (including `copyWith(field: null)`), `hashCode`, `==`
 and more.
 
-This is a very early proof of concept about what Freezed would look like when macros land in Dart.
-Beware: Due to many missing Macro features, lots of Freezed features are
+This is a very early proof of concept about what  would look like when macros land in Dart.
+Beware: Due to many missing Macro features, lots of  features are
 missing or broken. Use at your own risk :)
 
 ## Installation
 
-To get started with the macro version of Freezed:
+To get started with the macro version of :
 
 - Make sure that you use a Dart version >= 3.5.0-dev
 - Enable `macros` in your `analysis_options.yaml` as followed:
@@ -23,7 +23,7 @@ To get started with the macro version of Freezed:
     enable-experiment:
       - macros
   ```
-- Install Freezed >= 3.0.0:
+- Install  >= 3.0.0:
 
   ```yaml
   name: your_app
@@ -31,7 +31,7 @@ To get started with the macro version of Freezed:
     sdk: ">=3.5.0-0.0-dev <4.0.0"
 
   dependencies:
-    # Freezed is now a "dependencies".
+    #  is now a "dependencies".
     # freezed_annotation is no-longer needed
     dataclass: ^3.0.0-0.0.dev
   ```

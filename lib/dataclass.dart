@@ -3,8 +3,8 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:dataclass/src/macros.dart';
-import 'package:dataclass/src/part_utils.dart';
+import 'package:model_suite/src/macros.dart';
+import 'package:model_suite/src/part_utils.dart';
 import 'package:macros/macros.dart';
 import 'package:meta/meta.dart';
 
@@ -102,7 +102,7 @@ extension on String {
 extension on ClassDeclaration {
   bool hasAnnotation(Identifier annotation) {
     return metadata.any((e) =>
-        // TODO handle annotations called Freezed that aren't from the freezed package.
+        // TODO handle annotations called  that aren't from the freezed package.
         e is ConstructorMetadataAnnotation &&
         e.type.identifier.name == annotation.name);
   }
@@ -118,8 +118,8 @@ extension on ClassDeclaration {
   }
 }
 
-class _FreezedField {
-  _FreezedField({
+class _Field {
+  _Field({
     required this.type,
     required this.name,
     required this.isRequired,
@@ -271,14 +271,14 @@ macro class Data implements ClassDeclarationsMacro {
       (e) => e.identifier.name == (constructor ?? ''),
     );
 
-    final fields = <_FreezedField>[];
+    final fields = <_Field>[];
 
     if (targetConstructor == null) {
       for (final field in await builder.fieldsOf(clazz)) {
         if (field.hasInitializer) continue;
 
         fields.add(
-          _FreezedField(
+          _Field(
             type: field.type,
             isNamed: true,
             name: field.identifier.name,
@@ -289,7 +289,7 @@ macro class Data implements ClassDeclarationsMacro {
         );
       }
 
-      // TODO once augmentation libraries work properly, automatically add fields coming from Freezed interfaces.
+      // TODO once augmentation libraries work properly, automatically add fields coming from  interfaces.
     } else {
       if (superCtor != null) {
         builder.report(
@@ -305,7 +305,7 @@ macro class Data implements ClassDeclarationsMacro {
 
       for (final field in targetConstructor.parameters) {
         fields.add(
-          _FreezedField(
+          _Field(
             type: field.type,
             name: field.identifier.name,
             isNamed: field.isNamed,
@@ -322,7 +322,7 @@ macro class Data implements ClassDeclarationsMacro {
     if (targetSuperCtor != null) {
       for (final field in targetSuperCtor.parameters) {
         fields.add(
-          _FreezedField(
+          _Field(
             type: field.type,
             name: field.identifier.name,
             isNamed: field.isNamed,
@@ -413,7 +413,7 @@ macro class Data implements ClassDeclarationsMacro {
   }
 
   Future<void> _generateToString(
-    List<_FreezedField> fields,
+    List<_Field> fields,
     MemberDeclarationBuilder builder,
     ClassDeclaration clazz,
   ) async {
@@ -444,7 +444,7 @@ macro class Data implements ClassDeclarationsMacro {
   }
 
   Future<void> _generateEqual(
-    List<_FreezedField> fields,
+    List<_Field> fields,
     MemberDeclarationBuilder builder,
     ClassDeclaration clazz,
   ) async {
@@ -475,7 +475,7 @@ macro class Data implements ClassDeclarationsMacro {
   }
 
   Future<void> _generateHash(
-    List<_FreezedField> fields,
+    List<_Field> fields,
     MemberDeclarationBuilder builder,
     ClassDeclaration clazz,
   ) async {
@@ -519,7 +519,7 @@ macro class Data implements ClassDeclarationsMacro {
   }
 
   Future<void> _generateConstructor(
-    List<_FreezedField> fields,
+    List<_Field> fields,
     MemberDeclarationBuilder builder,
     ClassDeclaration clazz, {
     required ConstructorDeclaration? targetSuperCtor,
@@ -530,7 +530,7 @@ macro class Data implements ClassDeclarationsMacro {
       'List',
     );
     final unmodifiableList = await builder.resolveIdentifier(
-      Uri.parse('package:dataclass/dataclass.dart'),
+      Uri.parse('package:model_suite/dataclass.dart'),
       'EqualUnmodifiableListView',
     );
     final map = await builder.resolveIdentifier(
@@ -538,7 +538,7 @@ macro class Data implements ClassDeclarationsMacro {
       'Map',
     );
     final unmodifiableMap = await builder.resolveIdentifier(
-      Uri.parse('package:dataclass/dataclass.dart'),
+      Uri.parse('package:model_suite/dataclass.dart'),
       'EqualUnmodifiableMapView',
     );
     final hashSet = await builder.resolveIdentifier(
@@ -546,7 +546,7 @@ macro class Data implements ClassDeclarationsMacro {
       'Set',
     );
     final unmodifiableSet = await builder.resolveIdentifier(
-      Uri.parse('package:dataclass/dataclass.dart'),
+      Uri.parse('package:model_suite/dataclass.dart'),
       'EqualUnmodifiableSetView',
     );
 
@@ -557,7 +557,7 @@ macro class Data implements ClassDeclarationsMacro {
     final named = fields.where((e) => e.isNamed).toList();
 
     List<Object> initializerForField(
-      _FreezedField field,
+      _Field field,
     ) {
       if (!makeCollectionsUnmodifiable) return [field.name];
 
@@ -599,7 +599,7 @@ macro class Data implements ClassDeclarationsMacro {
     }
 
     List<Object> parameters() {
-      List<Object> partsForParam(_FreezedField param) {
+      List<Object> partsForParam(_Field param) {
         return [
           if (hasConstructor) ...[
             param.type.code,
@@ -670,7 +670,7 @@ macro class Data implements ClassDeclarationsMacro {
   }
 
   Future<void> _generateFields(
-    List<_FreezedField> fields,
+    List<_Field> fields,
     MemberDeclarationBuilder builder,
     ClassDeclaration clazz,
   ) async {
@@ -689,7 +689,7 @@ macro class Data implements ClassDeclarationsMacro {
   }
 
   Future<void> _generateCopyWith(
-    List<_FreezedField> fields,
+    List<_Field> fields,
     MemberDeclarationBuilder builder,
     ClassDeclaration clazz,
   ) async {
@@ -717,7 +717,7 @@ macro class Data implements ClassDeclarationsMacro {
         await builder.resolveIdentifier(Uri.parse('dart:core'), 'Object');
     final sentinel = await builder
         .parts(
-          '{{package:dataclass/dataclass.dart#Sentinel}}',
+          '{{package:model_suite/dataclass.dart#Sentinel}}',
         )
         .asDeclarationCode();
 
