@@ -1,0 +1,11 @@
+{
+  "files.exclude": {
+    "**/.git": false,
+    "**/.dart_tool": false,
+    "**/.idea": false,
+    "**/.vscode": false,
+    "**/.gitignore": false,
+    "**/LICENSE": false,
+    "**/pubspec.lock": false
+  }
+}
