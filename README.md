@@ -4,10 +4,11 @@
 
 ### **Identified Issues:**
 
-- [ ] Implement macros for generating `toJson` method
-- [ ] Implement macros for generating `fromJson` method
+- [x] Implement macros for generating `toJson` method
+- [x] Implement macros for generating `fromJson` method
 - [ ] Address enum handling in serialization
 - [ ] Enhance collection handling during serialization
 - [ ] Implement byte-to-JSON conversion
 - [ ] Implement JSON-to-byte conversion
+- [ ] Refactor convertors
 
