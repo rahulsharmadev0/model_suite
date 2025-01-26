@@ -1,11 +1,15 @@
 {
   "files.exclude": {
-    "**/.git": false,
-    "**/.dart_tool": false,
-    "**/.idea": false,
-    "**/.vscode": false,
-    "**/.gitignore": false,
-    "**/LICENSE": false,
-    "**/pubspec.lock": false
+    "**/.git": true,
+    "**/.dart_tool": true,
+    "**/.idea": true,
+    "**/.vscode": true,
+    "**/.gitignore": true,
+    "**/LICENSE": true,
+    "**/pubspec.lock": true,
+    "lib\\src\\macros/copywith.dart": true,
+    "lib\\src\\macros/equality.dart": true,
+    "lib\\src\\macros/tostring.dart": true,
+    "lib\\dataclass.dart": true
   }
 }
