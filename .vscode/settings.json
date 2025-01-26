@@ -6,6 +6,7 @@
     "**/.vscode": true,
     "**/.gitignore": true,
     "**/LICENSE": true,
-    "**/pubspec.lock": true
+    "**/pubspec.lock": true,
+    "lib\\src\\macros/json.dart": true
   }
 }
