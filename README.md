@@ -7,3 +7,4 @@
 - [ ] Constructors are being generated even for abstract classes, sealed classes, and mixins.
 - [ ] Inconsistent handling of constructor initializer variables and class-defined variables.
 - [ ] Default constructor values and inherited constructor values are not being handled correctly.
+- [ ] Add support of asserts 
