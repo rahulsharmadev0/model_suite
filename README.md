@@ -4,11 +4,8 @@
 
 ### **Identified Issues:**
 
-- [x] Implement macros for generating `toJson` method
-- [x] Implement macros for generating `fromJson` method
-- [ ] Address enum handling in serialization
-- [ ] Enhance collection handling during serialization
-- [ ] Implement byte-to-JSON conversion
-- [ ] Implement JSON-to-byte conversion
-- [ ] Refactor convertors
-
+- [ ] Constructors are being generated even for abstract classes, sealed classes, and mixins.
+- [ ] Inconsistent handling of constructor initializer variables and class-defined variables.
+- [ ] Default constructor values and inherited constructor values are not being handled correctly.
+- [ ] Add support of asserts 
+- [x] Add toString method generator

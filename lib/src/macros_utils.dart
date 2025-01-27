@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:macros/macros.dart';
 
@@ -20,12 +22,35 @@ extension NamedTypeAnnotationCodeX on NamedTypeAnnotationCode {
   }
 }
 
+typedef IdentifierResolverCallback = Future<Identifier> Function(Uri library, String name);
+
+class CodeFrom {
+  CodeFrom(this.resolveIdentifier);
+  final IdentifierResolverCallback resolveIdentifier;
+
+  Future<NamedTypeAnnotationCode> get int => get('int');
+  Future<NamedTypeAnnotationCode> get bool => get('bool');
+  Future<NamedTypeAnnotationCode> get double => get('double');
+  Future<NamedTypeAnnotationCode> get num => get('num');
+  Future<NamedTypeAnnotationCode> get string => get('String');
+  Future<NamedTypeAnnotationCode> get object => get('Object');
+  Future<NamedTypeAnnotationCode> get list => get('List');
+  Future<NamedTypeAnnotationCode> get map => get('Map');
+  Future<NamedTypeAnnotationCode> get set => get('Set');
+  Future<NamedTypeAnnotationCode> get dynamic => get('dynamic');
+  Future<NamedTypeAnnotationCode> get mapEntry => get('MapEntry');
+  Future<NamedTypeAnnotationCode> get iterable => get('Iterable');
+  Future<NamedTypeAnnotationCode> get identical => get('identical');
+  Future<NamedTypeAnnotationCode> get dateTime => get('DateTime');
+
+  Future<NamedTypeAnnotationCode> get(String name, [Uri? uri]) async =>
+      NamedTypeAnnotationCode(name: await resolveIdentifier(uri ?? dartCore, name));
+}
+
 // Compatible with both DefinitionBuilder & DeclarationBuilder.
 extension X on DeclarationPhaseIntrospector {
-  /// A piece of code representing a reference to a named type.
-  Future<NamedTypeAnnotationCode> codeFrom(Type type) async {
-    return NamedTypeAnnotationCode(name: await resolveIdentifier(dartCore, type.name));
-  }
+  //
+  CodeFrom get codeFrom => CodeFrom(resolveIdentifier);
 
   /// Returns default or Named constructor.
   Future<ConstructorDeclaration?> defConstructorOf(TypeDeclaration clazz, [String? namedCtors]) async {
