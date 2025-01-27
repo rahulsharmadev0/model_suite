@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:macros/macros.dart';
 import 'package:model_suite/src/macros_utils.dart';
-import 'package:model_suite/src/part_utils.dart';
 
 class MacroException extends DiagnosticException {
   MacroException(String message) : super(Diagnostic(DiagnosticMessage(message), Severity.error));
@@ -28,6 +27,7 @@ mixin _JsonMacroException {
       MacroException('Cannot generate a `toJson` constructor due to this existing one.');
 }
 
+// macro
 class JsonMacro
     with _JsonMacroException, _ToJson, _FromJson
     implements ClassDeclarationsMacro, ClassDefinitionMacro {
@@ -38,9 +38,9 @@ class JsonMacro
     if (clazz.hasAbstract || clazz.hasSealed || clazz.hasMixin) throw abstractMemberRestriction;
 
     final (map, string, object) = await (
-      builder.codeFrom(Map),
-      builder.codeFrom(String),
-      builder.codeFrom(Object),
+      builder.codeFrom.map,
+      builder.codeFrom.string,
+      builder.codeFrom.object,
     ).wait;
 
     final mapStringObject = map.copyWith(typeArguments: [string, object.asNullable]);
@@ -236,16 +236,16 @@ final class _SharedIntrospectionData {
   final List<FieldDeclaration> allFields;
 
   /// A [Code] representation of the type [List<Object?>].
-  final NamedTypeAnnotationCode jsonListCode;
+  final NamedTypeAnnotationCode listCode;
 
   /// A [Code] representation of the type [Set<Object?>].
-  final NamedTypeAnnotationCode jsonSetCode;
+  final NamedTypeAnnotationCode setCode;
 
   /// A [Code] representation of the type [Map<String, Object?>].
-  final NamedTypeAnnotationCode jsonMapCode;
+  final NamedTypeAnnotationCode mapCode;
 
-  /// The resolved [StaticType] representing the [Map<String, Object?>] type.
-  final StaticType jsonMapType;
+  // /// The resolved [StaticType] representing the [Map<String, Object?>] type.
+  // final StaticType mapType;
 
   /// The resolved identifier for the [MapEntry] class.
   final Identifier mapEntry;
@@ -259,17 +259,21 @@ final class _SharedIntrospectionData {
   /// The declaration of the superclass of [clazz], if it is not [Object].
   final ClassDeclaration? superclass;
 
+  /// The resolved identifier for the [DateTime] class.
+  final Identifier dateTimeCode;
+
   const _SharedIntrospectionData({
     required this.clazz,
     required this.allFields,
-    required this.jsonListCode,
-    required this.jsonSetCode,
-    required this.jsonMapCode,
-    required this.jsonMapType,
+    required this.listCode,
+    required this.setCode,
+    required this.mapCode,
+    // required this.mapType,
     required this.mapEntry,
     required this.objectCode,
     required this.stringCode,
     required this.superclass,
+    required this.dateTimeCode,
   });
 
   ///
@@ -278,13 +282,14 @@ final class _SharedIntrospectionData {
     DeclarationPhaseIntrospector builder,
     ClassDeclaration clazz,
   ) async {
-    final (listCode, setCode, mapCode, mapEntryCode, objectCode, stringCode) = await (
-      builder.codeFrom(List),
-      builder.codeFrom(Set),
-      builder.codeFrom(Map),
-      builder.codeFrom(MapEntry),
-      builder.codeFrom(Object),
-      builder.codeFrom(String),
+    final (listCode, setCode, mapCode, mapEntryCode, objectCode, stringCode, dateTimeCode) = await (
+      builder.codeFrom.list,
+      builder.codeFrom.set,
+      builder.codeFrom.map,
+      builder.codeFrom.mapEntry,
+      builder.codeFrom.object,
+      builder.codeFrom.string,
+      builder.codeFrom.dateTime,
     ).wait;
 
     final superclass = clazz.superclass;
@@ -293,20 +298,21 @@ final class _SharedIntrospectionData {
     final jsonSetCode = setCode.copyWith(typeArguments: [nullableObjectCode]);
     final jsonMapCode = mapCode.copyWith(typeArguments: [stringCode, nullableObjectCode]);
 
-    final (fields, jsonMapType, superclassDecl) = await (
+    final (fields, superclassDecl) = await (
       builder.fieldsOf(clazz),
-      builder.resolve(jsonMapCode),
+      // jsonMapType  =  builder.resolve(jsonMapCode),
       superclass == null ? Future.value(null) : builder.typeDeclarationOf(superclass.identifier),
     ).wait;
 
     return _SharedIntrospectionData(
       clazz: clazz,
       allFields: fields,
-      jsonListCode: jsonListCode,
-      jsonSetCode: jsonSetCode,
-      jsonMapCode: jsonMapCode,
-      jsonMapType: jsonMapType,
+      listCode: jsonListCode,
+      setCode: jsonSetCode,
+      mapCode: jsonMapCode,
+      // mapType: jsonMapType,
       mapEntry: mapEntryCode.name,
+      dateTimeCode: dateTimeCode.name,
       objectCode: objectCode,
       stringCode: stringCode,
       superclass: superclassDecl as ClassDeclaration?,
@@ -315,17 +321,6 @@ final class _SharedIntrospectionData {
 }
 
 final _macrosJson = Uri.parse('package:model_suite/src/macros/json.dart');
-
-/// Extension method to safely parse nested JSON data.
-extension MapJsonParsing<K, V> on Map<K, V> {
-  /// Extension method to safely parse nested JSON data.
-  R? get<R, FT>(K key, [R? Function(FT value)? parser]) {
-    final value = this[key];
-    if (value == null) return null;
-
-    return parser != null ? parser(value as FT) : value as R?;
-  }
-}
 
 NamedTypeAnnotation? _checkNamedType(TypeAnnotation type, Builder builder) {
   if (type is NamedTypeAnnotation) return type;
@@ -383,7 +378,7 @@ Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, De
           '[ for (final item in ',
           jsonReference,
           ' as ',
-          classData.jsonListCode,
+          classData.listCode,
           ') ',
           await _convertTypeFromJson(
               type.typeArguments.single, RawCode.fromString('item'), builder, classData),
@@ -395,7 +390,7 @@ Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, De
           '{ for (final item in ',
           jsonReference,
           ' as ',
-          classData.jsonSetCode,
+          classData.setCode,
           ')',
           await _convertTypeFromJson(
               type.typeArguments.single, RawCode.fromString('item'), builder, classData),
@@ -409,7 +404,7 @@ Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, De
           '(:key, :value) in (',
           jsonReference,
           ' as ',
-          classData.jsonMapCode,
+          classData.mapCode,
           ').entries) key: ',
           await _convertTypeFromJson(
               type.typeArguments.last, RawCode.fromString('value'), builder, classData),
@@ -424,7 +419,7 @@ Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, De
       case 'DateTime':
         return RawCode.fromParts([
           if (nullCheck != null) nullCheck,
-          await builder.resolveIdentifier(dartCore, 'DateTime'),
+          classData.dateTimeCode,
           '.parse(',
           jsonReference,
           ' as ',

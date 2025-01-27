@@ -8,3 +8,4 @@
 - [ ] Inconsistent handling of constructor initializer variables and class-defined variables.
 - [ ] Default constructor values and inherited constructor values are not being handled correctly.
 - [ ] Add support of asserts 
+- [x] Add toString method generator

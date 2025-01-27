@@ -3,10 +3,10 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:model_suite/src/macros.dart';
-import 'package:model_suite/src/part_utils.dart';
 import 'package:macros/macros.dart';
 import 'package:meta/meta.dart';
+import 'package:model_suite/src/macros.dart';
+import 'package:model_suite/src/part_utils.dart';
 
 /// An [UnmodifiableListView] which overrides ==
 // ignore: invalid_internal_annotation

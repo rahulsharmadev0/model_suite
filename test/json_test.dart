@@ -1,19 +1,34 @@
+import 'package:model_suite/src/macros/copywith.dart';
+import 'package:model_suite/src/macros/equality.dart';
+import 'package:model_suite/src/macros/json.dart';
+import 'package:model_suite/src/macros/tostring.dart';
 import 'package:model_suite/src/model.dart';
 
 @Model()
 class A {
-  int a;
-  String b;
-  Map<int, String> c;
-  List<int> d;
-  Set<int> e;
-  Map<int, A> f;
+  final int a;
+  final String b;
+  final Map<int, String>? c;
+  final List<int>? d;
+  final Set<DateTime>? e;
+  final Map<int, A> f;
+  final List<List<Map<String, int>>>? complex;
+  final ObjectMixin? mixinObj;
 
-  // A.fromJson(Map<String, dynamic> json)
-  //     : a = json['a'] as int,
-  //       b = json['b'] as String,
-  //       c = json['c'] as Map<int, String>,
-  //       d = (json['d'] as List).map((e) => e as int).toList(),
-  //       e = (json['e'] as List).map((e) => e as int).toSet(),
-  //       f = (json['f'] as Map).map((k, v) => MapEntry(k as int, A.fromJson(v as Map<String, dynamic>)));
+  const A(this.a, this.b, this.c, this.d, this.e, this.f, {this.complex, this.mixinObj});
+}
+
+@Model()
+class ObjectMixin {
+  final int a;
+  ObjectMixin(this.a);
+}
+
+@Model()
+class ObjectMixinA {
+  final int a;
+  final int b;
+  final int c;
+
+  ObjectMixinA({required this.a, required this.b, required this.c});
 }
