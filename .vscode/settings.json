@@ -7,6 +7,7 @@
     "**/.gitignore": true,
     "**/LICENSE": true,
     "**/pubspec.lock": true,
-    "lib\\src\\macros/json.dart": true
+    "lib\\src\\macros/json.dart": true,
+    "lib\\src\\macros/copywith.dart": true
   }
 }
