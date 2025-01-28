@@ -7,7 +7,7 @@ part 'utils/jenkins_hash.dart';
 
 
 /// URI for the equatable library
-final _equatable = Uri.parse('package:model_suite/src/macros/equality.dart');
+final _equality = Uri.parse('package:model_suite/src/macros/equality.dart');
 
 /// Utility function for deep equality comparison of collections
 /// Uses [DeepCollectionEquality] from the collection package
@@ -113,7 +113,7 @@ mixin _Equals on EqualityMacroException {
       builder.buildMethod(equality.identifier),
       builder.allFieldsOf(clazz),
       builder.codeFrom.identical,
-      builder.codeFrom.get('deepEquals', _equatable),
+      builder.codeFrom.get('deepEquals', _equality),
     ).wait;
 
     fields.removeWhere((f) => f.hasStatic);
@@ -196,7 +196,7 @@ mixin _HashCode on EqualityMacroException {
 
     final (hashCodeMethod, jenkinsHash, fields) = await (
       builder.buildMethod(hashCode.identifier),
-      builder.codeFrom.get('jenkinsHash', _equatable),
+      builder.codeFrom.get('jenkinsHash', _equality),
       builder.allFieldsOf(clazz),
     ).wait;
 
