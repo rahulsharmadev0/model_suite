@@ -10,6 +10,7 @@
     "lib\\src\\macros/copywith.dart": true,
     "lib\\src\\macros/equality.dart": true,
     "lib\\src\\macros/tostring.dart": true,
+    "lib\\src\\macros/utils/jenkins_hash.dart": true,
     "lib\\dataclass.dart": true
   }
 }

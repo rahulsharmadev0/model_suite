@@ -354,15 +354,15 @@ macro class Data implements ClassDeclarationsMacro {
       hasConstructor: targetConstructor != null,
       targetSuperCtor: targetSuperCtor,
     );
-    await _generateFields(fields, builder, clazz);
+    // await _generateFields(fields, builder, clazz);
     await _generateCopyWith(fields, builder, clazz);
-    await _generateToString(fields, builder, clazz);
+    // await _generateToString(fields, builder, clazz);
 
-    if (!clazz.hasSealed) {
-      // TODO generate equal/hash only if fields are final: https://github.com/dart-lang/sdk/issues/55764
-      await _generateEqual(fields, builder, clazz);
-      await _generateHash(fields, builder, clazz);
-    }
+    // if (!clazz.hasSealed) {
+    //   // TODO generate equal/hash only if fields are final: https://github.com/dart-lang/sdk/issues/55764
+    //   await _generateEqual(fields, builder, clazz);
+    //   await _generateHash(fields, builder, clazz);
+    // }
 
     builder.declareInLibrary(
       DeclarationCode.fromParts([

@@ -1,49 +1,61 @@
 import 'dart:async';
 import 'package:collection/collection.dart';
-import 'package:macros/macros.dart';
+import 'package:macros/macros.dart' hide MacroException;
 import 'package:model_suite/src/macros_utils.dart';
+import 'package:model_suite/src/macros.dart';
 
-class MacroException extends DiagnosticException {
-  MacroException(String message) : super(Diagnostic(DiagnosticMessage(message), Severity.error));
-}
-
+/// Mixin that provides standardized error messages for JSON serialization/deserialization
 mixin _JsonMacroException {
+  // Generic class errors
   MacroException get cannotApplyToGenericClasses =>
       MacroException('Cannot be applied to classes with generic type parameters');
 
   MacroException get abstractMemberRestriction =>
       MacroException('Abstract/Sealed/mixin classes cannot declares a constructor.');
 
+  // Inheritance-related errors
   MacroException get fromJsonUnsupportedInheritance => MacroException(
-      'Serialization of classes that extend other classes is only supported if those classes have a valid `fromJson(Map<String, Object?> json)` constructor.');
+      'Serialization of classes that extend other classes requires a valid `fromJson(Map<String, Object?> json)` constructor in parent class.');
 
   MacroException get toJsonUnsupportedInheritance => MacroException(
-      'Serialization of classes that extend other classes is only supported if those classes have a valid `toJson()` method.');
+      'Serialization of classes that extend other classes requires a valid `toJson()` method in parent class.');
 
+  // Method existence errors
   MacroException get fromJsonAlreadyExists =>
-      MacroException('Cannot generate a `fromJson` constructor due to this existing one.');
+      MacroException('Cannot generate `fromJson` constructor: constructor already exists.');
 
   MacroException get toJsonAlreadyExists =>
-      MacroException('Cannot generate a `toJson` constructor due to this existing one.');
+      MacroException('Cannot generate `toJson` method: method already exists.');
+
+  // Type conversion errors
+  MacroException get unsupportedTypeConversion =>
+      MacroException('Type must be a native JSON type or have appropriate fromJson/toJson implementations.');
+
+  MacroException get missingExplicitType =>
+      MacroException('Fields in serializable classes must have explicit type annotations.');
+
+  MacroException get invalidNamedType => MacroException('Only named types are supported for serialization.');
 }
 
-// macro
+/// Macro for generating JSON serialization and deserialization code
+macro
 class JsonMacro
-    with _JsonMacroException, _ToJson, _FromJson
+    with _JsonMacroException, _Converter, _ToJson, _FromJson
     implements ClassDeclarationsMacro, ClassDefinitionMacro {
   const JsonMacro();
+
   @override
   FutureOr<void> buildDeclarationsForClass(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
     if (clazz.typeParameters.isNotEmpty) throw cannotApplyToGenericClasses;
     if (clazz.hasAbstract || clazz.hasSealed || clazz.hasMixin) throw abstractMemberRestriction;
 
-    final (map, string, object) = await (
+    final ($map, $string, $dynamic) = await (
       builder.codeFrom.map,
       builder.codeFrom.string,
-      builder.codeFrom.object,
+      builder.codeFrom.dynamic,
     ).wait;
 
-    final mapStringObject = map.copyWith(typeArguments: [string, object.asNullable]);
+    final mapStringObject = $map.copyWith(typeArguments: [$string, $dynamic]);
 
     await (
       declareFromJson(clazz, builder, mapStringObject),
@@ -66,7 +78,7 @@ class JsonMacro
 }
 
 //
-mixin _ToJson on _JsonMacroException {
+mixin _ToJson on _JsonMacroException, _Converter {
   ///
   /// Need to write the code for the `toJson` method.
   ///
@@ -90,35 +102,17 @@ mixin _ToJson on _JsonMacroException {
     final toJsonBuilder = await builder.buildMethod(toJsonMethod.identifier);
 
     // TODO: Refactor
-    final parts = <Object>[
-      '{\n    final json = ',
-      if (superclass != null)
-        'super.toJson()'
-      else ...[
-        '<',
-        classData.stringCode,
-        ', ',
-        classData.objectCode.asNullable,
-        '>{}',
-      ],
-      ';\n    ',
-    ];
+    final parts = <Object>['=>  {\n'];
 
     Future<Code> addEntryForField(FieldDeclaration field) async {
-      final parts = <Object>[];
+      final parts = <Object>['     '];
       final doNullCheck = field.type.isNullable;
-      if (doNullCheck) {
-        parts.addAll([
-          'if (',
-          field.identifier,
-          // `null` is a reserved word, we can just use it.
-          ' != null) {\n      ',
-        ]);
-      }
+      if (doNullCheck) parts.addAll(['if (', field.identifier, ' != null) ']);
+
       parts.addAll([
-        "json[r'",
+        "r'",
         field.identifier.name,
-        "'] = ",
+        "' : ",
         await _convertTypeToJson(
             field.type,
             RawCode.fromParts([
@@ -129,16 +123,14 @@ mixin _ToJson on _JsonMacroException {
             classData,
             // We already are doing the null check.
             omitNullCheck: true),
-        ';\n    ',
-        if (doNullCheck) '}\n    ',
+        ',\n',
       ]);
-
       return RawCode.fromParts(parts);
     }
 
     parts
       ..addAll(await Future.wait(fields.map(addEntryForField)))
-      ..add('return json;\n  }');
+      ..add('    };');
 
     toJsonBuilder.augment(FunctionBodyCode.fromParts(parts));
   }
@@ -157,7 +149,7 @@ mixin _ToJson on _JsonMacroException {
   }
 }
 
-mixin _FromJson on _JsonMacroException {
+mixin _FromJson on _JsonMacroException, _Converter {
   Future<void> defineFromJson(
     ClassDeclaration clazz,
     TypeDefinitionBuilder builder,
@@ -244,9 +236,6 @@ final class _SharedIntrospectionData {
   /// A [Code] representation of the type [Map<String, Object?>].
   final NamedTypeAnnotationCode mapCode;
 
-  // /// The resolved [StaticType] representing the [Map<String, Object?>] type.
-  // final StaticType mapType;
-
   /// The resolved identifier for the [MapEntry] class.
   final Identifier mapEntry;
 
@@ -282,21 +271,20 @@ final class _SharedIntrospectionData {
     DeclarationPhaseIntrospector builder,
     ClassDeclaration clazz,
   ) async {
-    final (listCode, setCode, mapCode, mapEntryCode, objectCode, stringCode, dateTimeCode) = await (
+    final (listCode, setCode, mapCode, mapEntryCode, $dynamic, stringCode, dateTimeCode) = await (
       builder.codeFrom.list,
       builder.codeFrom.set,
       builder.codeFrom.map,
       builder.codeFrom.mapEntry,
-      builder.codeFrom.object,
+      builder.codeFrom.dynamic,
       builder.codeFrom.string,
       builder.codeFrom.dateTime,
     ).wait;
 
     final superclass = clazz.superclass;
-    final nullableObjectCode = objectCode.asNullable;
-    final jsonListCode = listCode.copyWith(typeArguments: [nullableObjectCode]);
-    final jsonSetCode = setCode.copyWith(typeArguments: [nullableObjectCode]);
-    final jsonMapCode = mapCode.copyWith(typeArguments: [stringCode, nullableObjectCode]);
+    final jsonListCode = listCode.copyWith(typeArguments: [$dynamic]);
+    final jsonSetCode = setCode.copyWith(typeArguments: [$dynamic]);
+    final jsonMapCode = mapCode.copyWith(typeArguments: [stringCode, $dynamic]);
 
     final (fields, superclassDecl) = await (
       builder.fieldsOf(clazz),
@@ -313,231 +301,169 @@ final class _SharedIntrospectionData {
       // mapType: jsonMapType,
       mapEntry: mapEntryCode.name,
       dateTimeCode: dateTimeCode.name,
-      objectCode: objectCode,
+      objectCode: $dynamic,
       stringCode: stringCode,
       superclass: superclassDecl as ClassDeclaration?,
     );
   }
 }
 
-final _macrosJson = Uri.parse('package:model_suite/src/macros/json.dart');
 
-NamedTypeAnnotation? _checkNamedType(TypeAnnotation type, Builder builder) {
-  if (type is NamedTypeAnnotation) return type;
-  if (type is OmittedTypeAnnotation) {
-    builder.report(Diagnostic(
-        DiagnosticMessage(
-            'Only fields with explicit types are allowed on serializable '
-            'classes, please add a type.',
-            target: type.asDiagnosticTarget),
-        Severity.error));
-  } else {
-    builder.report(Diagnostic(
-        DiagnosticMessage(
-            'Only fields with named types are allowed on serializable '
-            'classes.',
-            target: type.asDiagnosticTarget),
-        Severity.error));
-  }
-  return null;
-}
 
-// TODO: Rewrite this to use the below class.
-
-//
-//
-/// Returns a [Code] object which is an expression that converts a JSON map
-/// (referenced by [jsonReference]) into an instance of type [type].
-Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, DefinitionBuilder builder,
-    _SharedIntrospectionData classData) async {
-  final type = _checkNamedType(rawType, builder);
-  if (type == null) {
-    return RawCode.fromString("throw 'Unable to deserialize type ${rawType.code.debugString}'");
+/// Mixin that provides standardized error messages for JSON serialization/deserialization
+mixin _Converter on _JsonMacroException {
+  /// Validates that a type annotation is a named type and reports appropriate errors
+  NamedTypeAnnotation? _checkNamedType(TypeAnnotation type, Builder builder) {
+    if (type is NamedTypeAnnotation) return type;
+    if (type is OmittedTypeAnnotation) throw missingExplicitType;
+    throw invalidNamedType;
   }
 
-  // Follow type aliases until we reach an actual named type.
-  var classDecl = await type.classDeclaration(builder);
-  if (classDecl == null) {
-    return RawCode.fromString("throw 'Unable to deserialize type ${type.code.debugString}'");
-  }
+  /// Returns a [Code] object which is an expression that converts a JSON map
+  /// (referenced by [jsonReference]) into an instance of type [type].
+  Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, DefinitionBuilder builder,
+      _SharedIntrospectionData classData) async {
+    final type = _checkNamedType(rawType, builder);
+    if (type == null) throw unsupportedTypeConversion;
 
-  var nullCheck = type.isNullable
-      ? RawCode.fromParts([
-          jsonReference,
-          // `null` is a reserved word, we can just use it.
-          ' == null ? null : ',
-        ])
-      : null;
+    // Follow type aliases until we reach an actual named type.
+    var classDecl = await type.classDeclaration(builder);
+    if (classDecl == null) throw unsupportedTypeConversion;
 
-  // Check for the supported core types, and deserialize them accordingly.
-  if (classDecl.library.uri == dartCore) {
-    switch (classDecl.identifier.name) {
-      case 'List':
-        return RawCode.fromParts([
-          if (nullCheck != null) nullCheck,
-          '[ for (final item in ',
-          jsonReference,
-          ' as ',
-          classData.listCode,
-          ') ',
-          await _convertTypeFromJson(
-              type.typeArguments.single, RawCode.fromString('item'), builder, classData),
-          ']',
-        ]);
-      case 'Set':
-        return RawCode.fromParts([
-          if (nullCheck != null) nullCheck,
-          '{ for (final item in ',
-          jsonReference,
-          ' as ',
-          classData.setCode,
-          ')',
-          await _convertTypeFromJson(
-              type.typeArguments.single, RawCode.fromString('item'), builder, classData),
-          '}',
-        ]);
-      case 'Map':
-        return RawCode.fromParts([
-          if (nullCheck != null) nullCheck,
-          '{ for (final ',
-          classData.mapEntry,
-          '(:key, :value) in (',
-          jsonReference,
-          ' as ',
-          classData.mapCode,
-          ').entries) key: ',
-          await _convertTypeFromJson(
-              type.typeArguments.last, RawCode.fromString('value'), builder, classData),
-          '}',
-        ]);
-      case 'int' || 'double' || 'num' || 'String' || 'bool':
-        return RawCode.fromParts([
-          jsonReference,
-          ' as ',
-          type.code,
-        ]);
-      case 'DateTime':
-        return RawCode.fromParts([
-          if (nullCheck != null) nullCheck,
-          classData.dateTimeCode,
-          '.parse(',
-          jsonReference,
-          ' as ',
-          classData.stringCode,
-          ')'
-        ]);
+    // Generate null check code if the type is nullable.
+    final nullCheck = type.isNullable ? RawCode.fromParts([jsonReference, ' == null ? null : ']) : null;
+
+    // Check for the supported core types, and deserialize them accordingly.
+    if (classDecl.library.uri == dartCore) {
+      var typeName = classDecl.identifier.name;
+      switch (typeName) {
+        case 'List' || 'Set':
+          bool isSet = typeName == 'Set';
+          return RawCode.fromParts([
+            if (nullCheck != null) nullCheck,
+            isSet ? '{ ' : '[ ',
+            'for (final item in ',
+            jsonReference,
+            ' as ',
+            isSet ? classData.setCode : classData.listCode,
+            ') ',
+            await _convertTypeFromJson(
+                type.typeArguments.single, RawCode.fromString('item'), builder, classData),
+            isSet ? '}' : ']',
+          ]);
+        case 'Map':
+          return RawCode.fromParts([
+            if (nullCheck != null) nullCheck,
+            '{ for (final ',
+            classData.mapEntry,
+            '(:key, :value) in (',
+            jsonReference,
+            ' as ',
+            classData.mapCode,
+            ').entries) key: ',
+            await _convertTypeFromJson(
+                type.typeArguments.last, RawCode.fromString('value'), builder, classData),
+            '}',
+          ]);
+        case 'int' || 'double' || 'num' || 'String' || 'bool':
+          return RawCode.fromParts([
+            jsonReference,
+            ' as ',
+            type.code,
+          ]);
+        case 'DateTime':
+          return RawCode.fromParts([
+            if (nullCheck != null) nullCheck,
+            classData.dateTimeCode,
+            '.parse(',
+            jsonReference,
+            ' as ',
+            classData.stringCode,
+            ')'
+          ]);
+      }
     }
-  }
 
-  // Otherwise, check if `classDecl` has a `fromJson` constructor.
-  final constructors = await builder.constructorsOf(classDecl);
-  final fromJson = constructors.firstWhereOrNull((c) => c.identifier.name == 'fromJson');
+    // Otherwise, check if `classDecl` has a `fromJson` constructor.
+    final constructors = await builder.constructorsOf(classDecl);
+    final fromJson = constructors.firstWhereOrNull((c) => c.identifier.name == 'fromJson');
 
-  if (fromJson != null) {
-    return RawCode.fromParts([
-      if (nullCheck != null) nullCheck,
-      fromJson.identifier,
-      '(',
-      jsonReference,
-      ' as ',
-      fromJson.positionalParameters.first.type.code,
-      ')',
-    ]);
-  }
-
-  // Unsupported type, report an error and return valid code that throws.
-  builder.report(Diagnostic(
-      DiagnosticMessage(
-          'Unable to deserialize type, it must be a native JSON type or a '
-          'type with a `fromJson(Map<String, Object?> json)` constructor.',
-          target: type.asDiagnosticTarget),
-      Severity.error));
-  return RawCode.fromString("throw 'Unable to deserialize type ${type.code.debugString}'");
-}
-
-/// Returns a [Code] object which is an expression that converts an instance
-/// of type [rawType] (referenced by [valueReference]) into a JSON map.
-///
-/// Null checks will be inserted if [rawType] is  nullable, unless
-/// [omitNullCheck] is `true`.
-Future<Code> _convertTypeToJson(TypeAnnotation rawType, Code valueReference, DefinitionBuilder builder,
-    _SharedIntrospectionData classData,
-    {bool omitNullCheck = false}) async {
-  final type = _checkNamedType(rawType, builder);
-  if (type == null) {
-    return RawCode.fromString("throw 'Unable to serialize type ${rawType.code.debugString}'");
-  }
-
-  // Follow type aliases until we reach an actual named type.
-  var classDecl = await type.classDeclaration(builder);
-  if (classDecl == null) {
-    return RawCode.fromString("throw 'Unable to serialize type ${type.code.debugString}'");
-  }
-
-  var nullCheck = type.isNullable && !omitNullCheck
-      ? RawCode.fromParts([
-          valueReference,
-          // `null` is a reserved word, we can just use it.
-          ' == null ? null : ',
-        ])
-      : null;
-
-  // Check for the supported core types, and serialize them accordingly.
-  if (classDecl.library.uri == dartCore) {
-    switch (classDecl.identifier.name) {
-      case 'List':
-        return RawCode.fromParts([
-          if (nullCheck != null) nullCheck,
-          '[ for (final item in ',
-          valueReference,
-          ') ',
-          await _convertTypeToJson(type.typeArguments.single, RawCode.fromString('item'), builder, classData),
-          ']',
-        ]);
-      case 'Set':
-        return RawCode.fromParts([
-          if (nullCheck != null) nullCheck,
-          '{ for (final item in ',
-          valueReference,
-          ') ',
-          await _convertTypeToJson(type.typeArguments.single, RawCode.fromString('item'), builder, classData),
-          '}',
-        ]);
-      case 'Map':
-        return RawCode.fromParts([
-          if (nullCheck != null) nullCheck,
-          '{ for (final ',
-          classData.mapEntry,
-          '(:key, :value) in ',
-          valueReference,
-          '.entries) key: ',
-          await _convertTypeToJson(type.typeArguments.last, RawCode.fromString('value'), builder, classData),
-          '}',
-        ]);
-      case 'int' || 'double' || 'num' || 'String' || 'bool':
-        return valueReference;
-      case 'DateTime':
-        return RawCode.fromParts([if (nullCheck != null) nullCheck, valueReference, '.toIso8601String()']);
+    if (fromJson != null) {
+      return RawCode.fromParts([
+        if (nullCheck != null) nullCheck,
+        fromJson.identifier,
+        '(',
+        jsonReference,
+        ' as ',
+        fromJson.positionalParameters.first.type.code,
+        ')',
+      ]);
     }
+
+    // Unsupported type, report an error and return valid code that throws.
+    throw unsupportedTypeConversion;
   }
 
-  // Next, check if it has a `toJson()` method and call that.
-  final methods = await builder.methodsOf(classDecl);
-  final toJson = methods.firstWhereOrNull((c) => c.identifier.name == 'toJson')?.identifier;
-  if (toJson != null) {
-    return RawCode.fromParts([
-      if (nullCheck != null) nullCheck,
-      valueReference,
-      '.toJson()',
-    ]);
-  }
+  /// Returns a [Code] object which is an expression that converts an instance
+  /// of type [rawType] (referenced by [valueReference]) into a JSON map.
+  ///
+  /// Null checks will be inserted if [rawType] is  nullable, unless
+  /// [omitNullCheck] is `true`.
+  Future<Code> _convertTypeToJson(TypeAnnotation rawType, Code valueReference, DefinitionBuilder builder,
+      _SharedIntrospectionData classData,
+      {bool omitNullCheck = false}) async {
+    final type = _checkNamedType(rawType, builder);
+    if (type == null) throw unsupportedTypeConversion;
 
-  // Unsupported type, report an error and return valid code that throws.
-  builder.report(Diagnostic(
-      DiagnosticMessage(
-          'Unable to serialize type, it must be a native JSON type or a '
-          'type with a `Map<String, Object?> toJson()` method.',
-          target: type.asDiagnosticTarget),
-      Severity.error));
-  return RawCode.fromString("throw 'Unable to serialize type ${type.code.debugString}'");
+    // Follow type aliases until we reach an actual named type.
+    var classDecl = await type.classDeclaration(builder);
+    if (classDecl == null) throw unsupportedTypeConversion;
+
+    var nullCheck =
+        type.isNullable && !omitNullCheck ? RawCode.fromParts([valueReference, ' == null ? null : ']) : null;
+
+    // Check for the supported core types, and serialize them accordingly.
+    if (classDecl.library.uri == dartCore) {
+      switch (classDecl.identifier.name) {
+        case 'List' || 'Set':
+          bool isSet = classDecl.identifier.name == 'Set';
+          return RawCode.fromParts([
+            if (nullCheck != null) nullCheck,
+            isSet ? '{ ' : '[ ',
+            'for (final item in ',
+            valueReference,
+            ') ',
+            await _convertTypeToJson(
+                type.typeArguments.single, RawCode.fromString('item'), builder, classData),
+            isSet ? '}' : ']',
+          ]);
+        case 'Map':
+          return RawCode.fromParts([
+            if (nullCheck != null) nullCheck,
+            '{ for (final ',
+            classData.mapEntry,
+            '(:key, :value) in ',
+            valueReference,
+            '.entries) key: ',
+            await _convertTypeToJson(
+                type.typeArguments.last, RawCode.fromString('value'), builder, classData),
+            '}',
+          ]);
+        case 'int' || 'double' || 'num' || 'String' || 'bool':
+          return valueReference;
+        case 'DateTime':
+          return RawCode.fromParts([if (nullCheck != null) nullCheck, valueReference, '.toIso8601String()']);
+      }
+    }
+
+    // Next, check if it has a `toJson()` method and call that.
+    final methods = await builder.methodsOf(classDecl);
+    final toJson = methods.firstWhereOrNull((c) => c.identifier.name == 'toJson')?.identifier;
+    if (toJson != null) {
+      return RawCode.fromParts([if (nullCheck != null) nullCheck, valueReference, '.toJson()']);
+    }
+
+    // Unsupported type, report an error and return valid code that throws.
+    throw unsupportedTypeConversion;
+  }
 }
