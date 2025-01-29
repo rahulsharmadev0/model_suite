@@ -19,52 +19,49 @@ mixin EqualityMacroException {
 
   MacroException createHashCodeError(DiagnosticTarget target) =>
       MacroException('Cannot generate a `hashCode` getter for a class that already has one.', target: target);
+
+  MacroException lateFieldError(String className, DiagnosticTarget target) =>
+      MacroException('Cannot generate equality for `$className` class with late fields', target: target);
+
+
 }
 
 /// {@template equality}
 /// A macro that automatically generates equality operations for a class
-///
-/// This macro implements both [ClassDeclarationsMacro] and [ClassDefinitionMacro] to:
 /// 1. Generate the `==` operator for comparing instances
 /// 2. Generate the `hashCode` getter for consistent hashing
 /// 3. Handle deep equality comparison for collection fields
 /// {@endtemplate}
 macro
-class EqualityMacro
-    with EqualityMacroException, _Equals, _HashCode
-    implements ClassDeclarationsMacro, ClassDefinitionMacro {
+class EqualityMacro with EqualityMacroException, _Equals, _HashCode implements ClassDeclarationsMacro {
   /// {@macro equality}
   const EqualityMacro();
+
+  Future<Iterable<String>> getFieldsName(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
+    final fields = await builder.allFieldsOf(clazz);
+    List<String> ls = [];
+    for (final f in fields) {
+      if (f.hasLate) throw lateFieldError(clazz.identifier.name, f.asDiagnosticTarget);
+      if (!f.hasStatic) ls.add(f.identifier.name);
+    }
+    return ls;
+  }
 
   @override
   Future<void> buildDeclarationsForClass(
     ClassDeclaration clazz,
     MemberDeclarationBuilder builder,
   ) async {
-    final (equality, hashCode) = await (
+    /// Shared resources for equality and hashCode generation
+    final (equality, fields, hashCode) = await (
       getEquality(clazz, builder),
+      getFieldsName(clazz, builder),
       getHashCode(clazz, builder),
     ).wait;
 
     await (
-      declareEquals(clazz, equality, builder),
-      declareHashCode(clazz, hashCode, builder),
-    ).wait;
-  }
-
-  @override
-  Future<void> buildDefinitionForClass(
-    ClassDeclaration clazz,
-    TypeDefinitionBuilder builder,
-  ) async {
-    final (equality, hashCode) = await (
-      getEquality(clazz, builder),
-      getHashCode(clazz, builder),
-    ).wait;
-
-    await (
-      defineEquals(clazz, equality, builder),
-      defineHashCode(clazz, hashCode, builder),
+      buildEquals(clazz, fields, equality, builder),
+      buildHashCode(clazz, fields, hashCode, builder),
     ).wait;
   }
 }
@@ -81,84 +78,57 @@ mixin _Equals on EqualityMacroException {
     return methods.firstWhereOrNull((m) => m.identifier.name == '==');
   }
 
-  Future<void> declareEquals(
+  Future<void> buildEquals(
     ClassDeclaration clazz,
+    Iterable<String> fieldsName,
     MethodDeclaration? equality,
     MemberDeclarationBuilder builder,
   ) async {
     if (equality != null) throw equalityOperatorError(equality.asDiagnosticTarget);
 
-    final boolean = await builder.codeFrom.bool;
+    var generics = [
+      for (final type in clazz.typeParameters) ...[
+        type.identifier,
+      ],
+    ].joinAsCode(', ');
+
+    final (boolean, identical, deepEquals) = await (
+      builder.codeFrom.bool,
+      builder.codeFrom.identical,
+      builder.codeFrom.get('deepEquals', _equality),
+    ).wait;
+
+    var body = <Object>[
+      fieldsName.isEmpty ? ';\n' : '\n',
+      for (final field in fieldsName) ...[
+        '    && ',
+        deepEquals,
+        '($field, other.$field)',
+        field != fieldsName.last ? '\n' : ';\n',
+      ],
+    ];
 
     return builder.declareInType(
       DeclarationCode.fromParts([
-        '  external ',
+        '  ',
         boolean,
         ' operator==(',
         ' covariant ',
         clazz.identifier,
-        ' other);',
-      ]),
-    );
-  }
-
-  Future<void> defineEquals(
-    ClassDeclaration clazz,
-    MethodDeclaration? equality,
-    TypeDefinitionBuilder builder,
-  ) async {
-    if (equality == null) return;
-    
-    final (equalsMethod, fields, identical, deepEquals) = await (
-      builder.buildMethod(equality.identifier),
-      builder.allFieldsOf(clazz),
-      builder.codeFrom.identical,
-      builder.codeFrom.get('deepEquals', _equality),
-    ).wait;
-   
-
-    fields.removeWhere((f) => f.hasStatic);
-
-    if (fields.isEmpty) {
-      return equalsMethod.augment(
-        FunctionBodyCode.fromParts(
-          [
-            '{',
-            'if (',
-            identical,
-            '(this, other)',
-            ')',
-            'return true;',
-            'return other is ${clazz.identifier.name} && ',
-            'other.runtimeType == runtimeType;',
-            '}',
-          ],
-        ),
-      );
-    }
-
-    final fieldNames = fields.map((f) => f.identifier.name);
-    final lastField = fieldNames.last;
-    equalsMethod.augment(
-      FunctionBodyCode.fromParts(
-        [
-          '{',
-          'if (',
-          identical,
-          '(this, other)',
-          ')',
-          'return true;',
-          'return other is ${clazz.identifier.name} && ',
-          'other.runtimeType == runtimeType && ',
-          for (final field in fieldNames) ...[
-            deepEquals,
-            '($field, other.$field)',
-            if (field != lastField) ' && ',
-          ],
-          ';',
-          '}',
+        if (generics.isNotEmpty) ...[
+          '<',
+          ...generics,
+          '>',
         ],
-      ),
+        ' other){\n',
+        '  if(',
+        identical,
+        '(this, other)) return true;\n',
+        '    return other is ${clazz.identifier.name} && ',
+        'other.runtimeType == runtimeType',
+        ...body,
+        '  }'
+      ]),
     );
   }
 }
@@ -175,46 +145,26 @@ mixin _HashCode on EqualityMacroException {
     return methods.firstWhereOrNull((m) => m.identifier.name == 'hashCode');
   }
 
-  Future<void> declareHashCode(
+  Future<void> buildHashCode(
     ClassDeclaration clazz,
+    Iterable<String> fieldsName,
     MethodDeclaration? hashCode,
     MemberDeclarationBuilder builder,
   ) async {
     if (hashCode != null) throw createHashCodeError(hashCode.asDiagnosticTarget);
-    final integer = await builder.codeFrom.int;
+
+    final (integer, jenkinsHash) =
+        await (builder.codeFrom.int, builder.codeFrom.get('jenkinsHash', _equality)).wait;
+
+    var body = [
+      jenkinsHash,
+      '([',
+      fieldsName.join(', '),
+      ']);',
+    ];
 
     return builder.declareInType(
-      DeclarationCode.fromParts(['  external ', integer.code, ' get hashCode;']),
-    );
-  }
-
-  Future<void> defineHashCode(
-    ClassDeclaration clazz,
-    MethodDeclaration? hashCode,
-    TypeDefinitionBuilder builder,
-  ) async {
-    if (hashCode == null) return;
-
-    final (hashCodeMethod, jenkinsHash, fields) = await (
-      builder.buildMethod(hashCode.identifier),
-      builder.codeFrom.get('jenkinsHash', _equality),
-      builder.allFieldsOf(clazz),
-    ).wait;
-
-    fields.removeWhere((f) => f.hasStatic);
-
-    final fieldNames = fields.map((f) => f.identifier.name);
-
-    return hashCodeMethod.augment(
-      FunctionBodyCode.fromParts(
-        [
-          '=> ',
-          jenkinsHash,
-          '([',
-          fieldNames.join(', '),
-          ']);',
-        ],
-      ),
+      DeclarationCode.fromParts(['  ', integer.code, ' get hashCode {\n    return ', ...body, '\n  }']),
     );
   }
 }

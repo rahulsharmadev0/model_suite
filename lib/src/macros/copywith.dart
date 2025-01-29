@@ -14,40 +14,50 @@ class _Undefined {
 
 /// Mixin that provides exception handling functionality for the CopyWith macro
 /// Contains methods to generate specific error messages for different scenarios
-mixin _CopyWithMacroException {
+class _CopyWithMacroException {
+  final ClassDeclaration clazz;
+  const _CopyWithMacroException(this.clazz);
+
+  String get className =>  clazz.identifier.name;
+  DiagnosticTarget get classTarget => clazz.asDiagnosticTarget;
+
   /// Warns when a copyWith method already exists in the target class
-  MacroException existingCopyWithWarning(DiagnosticTarget target) => MacroException(
+  MacroException existingCopyWithWarning({String? className, DiagnosticTarget? target}) => MacroException(
       'A `copyWith` method already exists in this class. To use @CopyWithMacro, either remove the existing copyWith method or remove the macro annotation.',
-      target: target,
+      target: target??clazz.asDiagnosticTarget,
       severity: Severity.warning);
 
   /// Error when the target class is missing a required constructor
-  MacroException missingConstructorError(ClassDeclaration clazz) => MacroException(
-      'Class "${clazz.identifier.name}" is missing the required constructor. Please define a constructor matching the name specified in @CopyWithMacro annotation. If using default constructor, ensure it exists.',
-      target: clazz.asDiagnosticTarget);
+  MacroException missingConstructorError({String? className, DiagnosticTarget? target}) => MacroException(
+      'Class `${className??this.className}` is missing the required constructor. Please define a constructor matching the name specified in @CopyWithMacro annotation. If using default constructor, ensure it exists.',
+      target: target ?? classTarget);
+
+  
 
   /// Error when constructor parameters are missing type annotations
-  MacroException missingTypeAnnotationsError(ClassDeclaration clazz) => MacroException(
-      'All constructor parameters in "${clazz.identifier.name}" must have explicit type annotations. Found nullable or dynamic parameters which are not supported. Please add type annotations to all parameters.',
-      target: clazz.asDiagnosticTarget);
+  MacroException missingTypeAnnotationsError({String? className, DiagnosticTarget? target}) => MacroException(
+      'All constructor parameters in `${className??this.className}` must have explicit type annotations. Found nullable or dynamic parameters which are not supported. Please add type annotations to all parameters.',
+      target: target ?? classTarget);
 
   /// Error when the class is abstract or sealed
-  MacroException invalidClassTypeError(ClassDeclaration clazz) => MacroException(
-      'Class `${clazz.identifier.name}` cannot be abstract or sealed when using @CopyWithMacro. Remove the abstract/sealed modifier or use a concrete class instead.',
-      target: clazz.asDiagnosticTarget);
+  MacroException invalidClassTypeError({String? className, DiagnosticTarget? target}) => MacroException(
+      'Class `${className??this.className}` cannot be abstract or sealed when using @CopyWithMacro. Remove the abstract/sealed modifier or use a concrete class instead.',
+      target: target ?? classTarget);
 
   // Error when the class has no parameters in the constructor
-  MacroException missingParametersWarning(String clazz, DeclarationDiagnosticTarget asDiagnosticTarget) =>
+  MacroException missingParametersWarning({String? className, DiagnosticTarget? target}) =>
       MacroException(
-          'Class "$clazz" has no parameters in the constructor. Please add parameters to the constructor to use @CopyWithMacro.',
-          target: asDiagnosticTarget,
+          'Class `${className??this.className}` has no parameters in the constructor. Please add parameters to the constructor to use @CopyWithMacro.',
+          target: target ?? classTarget,
           severity: Severity.warning);
+
+        
 }
 
 /// Macro implementation for generating copyWith functionality
 /// Implements both declaration and definition phase macros
 macro
-class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMacro {
+class CopyWithMacro implements ClassDeclarationsMacro {
   /// Fields that should be excluded from the copyWith method
   final Set<String> immutable;
 
@@ -58,11 +68,13 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
 
   @override
   Future<void> buildDeclarationsForClass(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
+    final _CopyWithMacroException exception = _CopyWithMacroException(clazz);
+    
     // Validate class is not abstract or sealed
-    if (clazz.hasAbstract || clazz.hasSealed) throw invalidClassTypeError(clazz);
+    if (clazz.hasAbstract || clazz.hasSealed) throw exception.invalidClassTypeError();
     // Check for existing copyWith method
     final copyWith = await getMethod(clazz, builder);
-    if (copyWith != null) throw existingCopyWithWarning(clazz.asDiagnosticTarget);
+    if (copyWith != null) throw exception.existingCopyWithWarning();
 
     // Retrieve method and constructor definitions
     final (allFields, defConstructor) = await (
@@ -72,11 +84,11 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
 
     // Validate constructor
     if (defConstructor == null || constructor != defConstructor.identifier.name) {
-      throw missingConstructorError(clazz);
+      throw exception.missingConstructorError();
     } else if (defConstructor.parameters.isEmpty) {
       if (allFields.isNotEmpty)
         builder.report(
-            missingParametersWarning(clazz.identifier.name, defConstructor.asDiagnosticTarget).diagnostic);
+            exception.missingParametersWarning(className:clazz.identifier.name, target:defConstructor.asDiagnosticTarget).diagnostic);
       return;
     }
 
@@ -86,7 +98,7 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
 
     for (var cParm in defConstructor.parameters) {
       var field = fieldMapping[cParm.identifier.name];
-      if (field == null) throw missingTypeAnnotationsError(clazz);
+      if (field == null) throw exception.missingTypeAnnotationsError();
       // Generic constructor parameter
       params.add(Parameter.fromFPD(field, cParm));
     }
@@ -117,6 +129,13 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
         if (i < params.length - 1) ', '
       ],
     ];
+    
+    var generics = [
+      for (final type in clazz.typeParameters) ...[
+        type.identifier,
+      ],
+    ].joinAsCode(', ');
+
 
     // Generate method implementation with parameter handling
     String constructorName = defConstructor.identifier.name;
@@ -125,6 +144,11 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
     final body = DeclarationCode.fromParts(
       [
         clazz.identifier,
+         if (generics.isNotEmpty) ...[
+          '<',
+          ...generics,
+          '>',
+        ],
         ' Function({',
         for (final (i, field) in params.indexed) ...[
           '\n  ',
@@ -133,9 +157,9 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
           field.name,
           if (i < params.length - 1) ', '
         ],
-        '}) get copyWith => ({',
+        '})\n  get copyWith => ({',
         ...args,
-        '}) => ',
+        '})\n  => ',
         clazz.identifier,
         constructorName,
         '(',
@@ -195,11 +219,11 @@ class Parameter {
 
   /// Generates the parameter code for the copyWith method
   List<Object> copyWith(bool immutable, Object undefined) {
-    var parts = <Object>[isNamed ? '$name : ' : ''];
-    if (immutable) return [...parts, 'this.', name, ' as ', typeCode];
+    var parts = <Object>[isNamed ? '$name : (' : '('];
+    if (immutable) return [...parts, 'this.', name, ') as ', typeCode];
     parts
       ..addAll(isNullable ? [name, ' == ', undefined] : [name, ' == null'])
-      ..addAll([' ? this.', name, ' : ', name, ' as ', typeCode]);
+      ..addAll([' ? this.', name, ' : ', name, ') as ', typeCode]);
 
     return parts;
   }

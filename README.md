@@ -10,5 +10,8 @@
 - [ ] Default constructor values and inherited constructor values are not being handled correctly.
 - [ ] Add support of asserts 
 - [x] Add toString method generator
-- [ ] Generic<Type> Analysis Server error  occer ⚠️
+- [x] Generic<Type> Analysis Server error  occer ⚠️
+- [ ] Add more tests for CopyWithMacro and EquilityMacro
+
+------
 
