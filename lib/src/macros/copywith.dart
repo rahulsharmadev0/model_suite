@@ -6,8 +6,11 @@ import 'package:model_suite/src/macros_utils.dart';
 
 final _copywithMacro = Uri.parse('package:model_suite/src/macros/copywith.dart');
 
-const undefined =  _Undefined();
-class _Undefined { const _Undefined();}
+const undefined = _Undefined();
+
+class _Undefined {
+  const _Undefined();
+}
 
 /// Mixin that provides exception handling functionality for the CopyWith macro
 /// Contains methods to generate specific error messages for different scenarios
@@ -34,10 +37,11 @@ mixin _CopyWithMacroException {
       target: clazz.asDiagnosticTarget);
 
   // Error when the class has no parameters in the constructor
-  MacroException missingParametersWarning(String clazz, DeclarationDiagnosticTarget asDiagnosticTarget) => MacroException(
-      'Class "$clazz" has no parameters in the constructor. Please add parameters to the constructor to use @CopyWithMacro.',
-      target: asDiagnosticTarget,
-      severity: Severity.warning);
+  MacroException missingParametersWarning(String clazz, DeclarationDiagnosticTarget asDiagnosticTarget) =>
+      MacroException(
+          'Class "$clazz" has no parameters in the constructor. Please add parameters to the constructor to use @CopyWithMacro.',
+          target: asDiagnosticTarget,
+          severity: Severity.warning);
 }
 
 /// Macro implementation for generating copyWith functionality
@@ -59,7 +63,6 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
     // Check for existing copyWith method
     final copyWith = await getMethod(clazz, builder);
     if (copyWith != null) throw existingCopyWithWarning(clazz.asDiagnosticTarget);
-    
 
     // Retrieve method and constructor definitions
     final (allFields, defConstructor) = await (
@@ -70,9 +73,10 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
     // Validate constructor
     if (defConstructor == null || constructor != defConstructor.identifier.name) {
       throw missingConstructorError(clazz);
-    }else if(defConstructor.parameters.isEmpty){
-     if(allFields.isNotEmpty){
-      builder.report(missingParametersWarning(clazz.identifier.name, defConstructor.asDiagnosticTarget).diagnostic);}
+    } else if (defConstructor.parameters.isEmpty) {
+      if (allFields.isNotEmpty)
+        builder.report(
+            missingParametersWarning(clazz.identifier.name, defConstructor.asDiagnosticTarget).diagnostic);
       return;
     }
 
@@ -93,7 +97,6 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
       builder.codeFrom.get('undefined', _copywithMacro),
     ).wait;
 
-  
     // Generate arguments and parameter list for the copyWith method
     final args = [
       for (var (i, param) in params.indexed)
@@ -119,18 +122,17 @@ class CopyWithMacro with _CopyWithMacroException implements ClassDeclarationsMac
     String constructorName = defConstructor.identifier.name;
     if (constructor.isNotEmpty) constructorName = '.$constructorName';
 
-   
     final body = DeclarationCode.fromParts(
-      [clazz.identifier,
-      ' Function({',
-      for (final (i, field) in params.indexed) 
-      ...[
-        '\n  ',
-        field.typeCode,
-        ' ',
-        field.name,
-        if (i < params.length - 1) ', '],
-
+      [
+        clazz.identifier,
+        ' Function({',
+        for (final (i, field) in params.indexed) ...[
+          '\n  ',
+          field.typeCode,
+          ' ',
+          field.name,
+          if (i < params.length - 1) ', '
+        ],
         '}) get copyWith => ({',
         ...args,
         '}) => ',

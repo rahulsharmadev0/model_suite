@@ -14,9 +14,9 @@ void main() {
   group('MapJsonParsing extension tests', () {
     test('Retrieve value without parser', () {
       final map = {'key1': 'value1', 'key2': 42};
-      expect(map.get('key1'), 'value1');
-      expect(map.get('key2'), 42);
-      expect(map.get('key3'), null); // Nonexistent key
+      expect(map.get<String, dynamic>('key1'), 'value1');
+      expect(map.get<String, dynamic>('key2'), 42);
+      expect(map.get<String, dynamic>('key3'), null); // Nonexistent key
     });
 
     test('Retrieve value with parser', () {
@@ -41,7 +41,7 @@ void main() {
 
     test('Handle null value without parser', () {
       final map = {'key1': null};
-      expect(map.get('key1'), null);
+      expect(map.get<String, dynamic>('key1'), null);
     });
 
     test('Handle null value with parser', () {

@@ -9,10 +9,6 @@ final dartCore = Uri.parse('dart:core');
 typedef FieldMetadata = ({String name, bool isRequired, TypeAnnotation? type});
 typedef ConstructorParams = ({List<FieldMetadata> positional, List<FieldMetadata> named});
 
-extension on Type {
-  String get name => toString().split('<').first;
-}
-
 extension NamedTypeAnnotationCodeX on NamedTypeAnnotationCode {
   NamedTypeAnnotationCode copyWith({Identifier? name, List<TypeAnnotationCode>? typeArguments}) {
     return NamedTypeAnnotationCode(

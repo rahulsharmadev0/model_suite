@@ -1,8 +1,9 @@
 import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:macros/macros.dart' hide MacroException;
-import 'package:model_suite/src/macros_utils.dart';
 import 'package:model_suite/src/macros.dart';
+import 'package:model_suite/src/macros_utils.dart';
 
 /// Mixin that provides standardized error messages for JSON serialization/deserialization
 mixin _JsonMacroException {
@@ -308,8 +309,6 @@ final class _SharedIntrospectionData {
   }
 }
 
-
-
 /// Mixin that provides standardized error messages for JSON serialization/deserialization
 mixin _Converter on _JsonMacroException {
   /// Validates that a type annotation is a named type and reports appropriate errors
@@ -320,7 +319,7 @@ mixin _Converter on _JsonMacroException {
   }
 
   /// Returns a [Code] object which is an expression that converts a JSON map
-  /// (referenced by [jsonReference]) into an instance of type [type].
+  /// (referenced by [jsonReference]) into an instance of type.
   Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, DefinitionBuilder builder,
       _SharedIntrospectionData classData) async {
     final type = _checkNamedType(rawType, builder);

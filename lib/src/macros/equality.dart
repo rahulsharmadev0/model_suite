@@ -5,7 +5,6 @@ import 'package:model_suite/src/macros_utils.dart';
 import './../macros.dart';
 part 'utils/jenkins_hash.dart';
 
-
 /// URI for the equatable library
 final _equality = Uri.parse('package:model_suite/src/macros/equality.dart');
 
@@ -96,7 +95,8 @@ mixin _Equals on EqualityMacroException {
         '  external ',
         boolean,
         ' operator==(',
-        ' covariant ${clazz.identifier.name}',
+        ' covariant ',
+        clazz.identifier,
         ' other);',
       ]),
     );
@@ -108,13 +108,14 @@ mixin _Equals on EqualityMacroException {
     TypeDefinitionBuilder builder,
   ) async {
     if (equality == null) return;
-
+    
     final (equalsMethod, fields, identical, deepEquals) = await (
       builder.buildMethod(equality.identifier),
       builder.allFieldsOf(clazz),
       builder.codeFrom.identical,
       builder.codeFrom.get('deepEquals', _equality),
     ).wait;
+   
 
     fields.removeWhere((f) => f.hasStatic);
 
@@ -138,7 +139,7 @@ mixin _Equals on EqualityMacroException {
 
     final fieldNames = fields.map((f) => f.identifier.name);
     final lastField = fieldNames.last;
-    return equalsMethod.augment(
+    equalsMethod.augment(
       FunctionBodyCode.fromParts(
         [
           '{',
@@ -183,7 +184,7 @@ mixin _HashCode on EqualityMacroException {
     final integer = await builder.codeFrom.int;
 
     return builder.declareInType(
-      DeclarationCode.fromParts(['  external ', integer, ' get hashCode;']),
+      DeclarationCode.fromParts(['  external ', integer.code, ' get hashCode;']),
     );
   }
 
