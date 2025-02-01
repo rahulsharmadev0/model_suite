@@ -482,23 +482,7 @@ mixin _Converter on _JsonMacroException {
     var classDecl = await type.classDeclaration(builder);
     if (classDecl == null) throw unsupportedTypeConversion;
 
-    if (classDecl.library.uri == dartCore) {
-      switch (classDecl.identifier.name) {
-        case 'String':
-          return keyReference;
-        case 'int':
-          return RawCode.fromParts(['int.parse(', keyReference, ' as String)']);
-        case 'double':
-          return RawCode.fromParts(['double.parse(', keyReference, ' as String)']);
-        case 'DateTime':
-          return RawCode.fromParts([
-            classData.dateTimeCode,
-            '.parse(',
-            keyReference,
-            ' as String)',
-          ]);
-      }
-    }
+    if(classDecl.identifier.name == 'String') return keyReference;
     throw unsupportedTypeConversion;
   }
 
