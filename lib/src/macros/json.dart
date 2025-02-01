@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:macros/macros.dart' hide MacroException;
-import 'package:model_suite/src/macros.dart';
 import 'package:model_suite/src/macros_utils.dart';
 
 /// Mixin that provides standardized error messages for JSON serialization/deserialization

@@ -2,7 +2,6 @@ import 'package:collection/collection.dart' show DeepCollectionEquality, Iterabl
 import 'package:macros/macros.dart' hide MacroException;
 import 'package:meta/meta.dart';
 import 'package:model_suite/src/macros_utils.dart';
-import './../macros.dart';
 part 'utils/jenkins_hash.dart';
 
 /// URI for the equatable library
