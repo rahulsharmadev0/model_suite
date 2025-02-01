@@ -1,16 +1,16 @@
 {
   "files.exclude": {
-    "**/.git": true,
-    "**/.dart_tool": true,
-    "**/.idea": true,
-    "**/.vscode": true,
-    "**/.gitignore": true,
-    "**/LICENSE": true,
-    "**/pubspec.lock": true,
-    "test/equality_macro": true,
-    "test/copwith_macro": true,
-    "lib/src/macros/utils/jenkins_hash.dart": true,
-    "lib/src/macros/copywith.dart": true,
-    "lib/src/macros/equality.dart": true
+    "**/.git": false,
+    "**/.dart_tool": false,
+    "**/.idea": false,
+    "**/.vscode": false,
+    "**/.gitignore": false,
+    "**/LICENSE": false,
+    "**/pubspec.lock": false,
+    "test/equality_macro": false,
+    "test/copwith_macro": false,
+    "lib/src/macros/utils/jenkins_hash.dart": false,
+    "lib/src/macros/copywith.dart": false,
+    "lib/src/macros/equality.dart": false
   }
 }

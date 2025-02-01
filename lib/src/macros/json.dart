@@ -129,9 +129,12 @@ mixin _ToJson on _JsonMacroException, _Converter {
       return RawCode.fromParts(parts);
     }
 
-    parts
-      ..addAll(await Future.wait(fields.map(addEntryForField)))
-      ..add('    };');
+    parts..addAll(await Future.wait(fields.map(addEntryForField)))
+    ..add(RawCode.fromParts([
+       if(superclass!=null) '...super.toJson(),',
+       '    };'
+        ]));
+
 
     toJsonBuilder.augment(FunctionBodyCode.fromParts(parts));
   }
@@ -359,7 +362,10 @@ mixin _Converter on _JsonMacroException {
             jsonReference,
             ' as ',
             classData.mapCode,
-            ').entries) key: ',
+            ').entries) ',
+            await _convertMapKeyFromJson(
+                type.typeArguments.first, RawCode.fromString('key'), builder, classData),
+            ': ',
             await _convertTypeFromJson(
                 type.typeArguments.last, RawCode.fromString('value'), builder, classData),
             '}',
@@ -443,7 +449,9 @@ mixin _Converter on _JsonMacroException {
             classData.mapEntry,
             '(:key, :value) in ',
             valueReference,
-            '.entries) key: ',
+            '.entries) ',
+            await _convertMapKeyToJson(type.typeArguments.first, RawCode.fromString('key'), builder),
+            ': ',
             await _convertTypeToJson(
                 type.typeArguments.last, RawCode.fromString('value'), builder, classData),
             '}',
@@ -463,6 +471,54 @@ mixin _Converter on _JsonMacroException {
     }
 
     // Unsupported type, report an error and return valid code that throws.
+    throw unsupportedTypeConversion;
+  }
+
+  Future<Code> _convertMapKeyFromJson(TypeAnnotation keyType, Code keyReference, DefinitionBuilder builder,
+      _SharedIntrospectionData classData) async {
+    final type = _checkNamedType(keyType, builder);
+    if (type == null) throw unsupportedTypeConversion;
+
+    var classDecl = await type.classDeclaration(builder);
+    if (classDecl == null) throw unsupportedTypeConversion;
+
+    if (classDecl.library.uri == dartCore) {
+      switch (classDecl.identifier.name) {
+        case 'String':
+          return keyReference;
+        case 'int':
+          return RawCode.fromParts(['int.parse(', keyReference, ' as String)']);
+        case 'double':
+          return RawCode.fromParts(['double.parse(', keyReference, ' as String)']);
+        case 'DateTime':
+          return RawCode.fromParts([
+            classData.dateTimeCode,
+            '.parse(',
+            keyReference,
+            ' as String)',
+          ]);
+      }
+    }
+    throw unsupportedTypeConversion;
+  }
+
+  Future<Code> _convertMapKeyToJson(TypeAnnotation keyType, Code keyReference, DefinitionBuilder builder) async {
+    final type = _checkNamedType(keyType, builder);
+    if (type == null) throw unsupportedTypeConversion;
+
+    var classDecl = await type.classDeclaration(builder);
+    if (classDecl == null) throw unsupportedTypeConversion;
+
+    if (classDecl.library.uri == dartCore) {
+      switch (classDecl.identifier.name) {
+        case 'String':
+          return keyReference;
+        case 'int' || 'double':
+          return RawCode.fromParts([keyReference, '.toString()']);
+        case 'DateTime':
+          return RawCode.fromParts([keyReference, '.toIso8601String()']);
+      }
+    }
     throw unsupportedTypeConversion;
   }
 }
