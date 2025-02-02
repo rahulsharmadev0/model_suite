@@ -136,9 +136,10 @@ class JsonModelBuilder extends ModelBuilder with _JsonMacroException, _Converter
         f,
         if (i != initializers.length - 1) ',\n',
       ],
-      if (superclass != null) 'super.fromJson(json)',
+      if (superclass != null) ', super.fromJson(json)',
       ';'
     ];
+
     builder.declareInType(DeclarationCode.fromParts(parts));
   }
 }

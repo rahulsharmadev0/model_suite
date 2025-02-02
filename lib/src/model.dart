@@ -1,5 +1,6 @@
-import 'dart:async';
+library model;
 
+import 'dart:async';
 import 'package:macros/macros.dart';
 import 'package:model_suite/src/macros/constructor.dart';
 import 'package:model_suite/src/macros/copywith.dart';
@@ -29,10 +30,9 @@ class Model extends ModelMacro {
 
   @override
   Future<void> buildDeclarationsForClass(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
-    var clazzData = await ClazzData.build(clazz, builder, constructorName, superConstructorName);
-
+    ClazzData clazzData = await ClazzData.build(clazz, builder, constructorName, superConstructorName);
+    await ConstructorModelBuilder(clazzData, builder).build();
     final builders = <ModelBuilder>[
-      ConstructorModelBuilder(clazzData, builder),
       JsonModelBuilder(clazzData, builder),
       EqualityModelBuilder(clazzData, builder),
       ToStringModelBuilder(clazzData, builder),

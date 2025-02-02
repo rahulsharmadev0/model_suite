@@ -7,6 +7,9 @@ import 'macros_utils.dart';
 /// share that work across multiple locations.
 @internal
 class ClazzData {
+  @internal
+  bool isModelConstructorDefined = false;
+
   /// The declaration of the class we are generating for.
   final ClassDeclaration clazz;
   final List<FieldDeclaration> clazzfields;
@@ -17,7 +20,7 @@ class ClazzData {
   final ConstructorDeclaration? superConstructor;
   final Iterable<MethodDeclaration> clazzMethods;
 
-  const ClazzData(
+  ClazzData(
       {required this.clazz,
       required this.clazzMethods,
       required this.clazzfields,

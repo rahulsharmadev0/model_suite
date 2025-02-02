@@ -65,12 +65,19 @@ class CopyWithModelBuilder extends ModelBuilder {
   Future<void> build() async {
     if (clazzData.hasCopyWith) return;
     final _CopyWithMacroException exception = _CopyWithMacroException(clazz);
-    // Validate class is not abstract or sealed
     if (clazz.hasAbstract || clazz.hasSealed) throw exception.invalidClassTypeError();
 
-    // Validate constructor
+    final params = <Parameter>[];
+
     if (!clazzData.hasConstructor) {
-      throw exception.missingConstructorError();
+      if (clazzData.isModelConstructorDefined) {
+        params.addAll(clazzData.clazzfields.map(Parameter.fromBothFieldAndFPD));
+        if (clazzData.hasSuperConstructor) {
+          params.addAll(clazzData.superConstructor!.parameters.map(Parameter.fromFPD));
+        }
+      } else {
+        throw exception.missingConstructorError();
+      }
     } else if (clazzData.constructor!.parameters.isEmpty) {
       if (clazzData.allFields.isNotEmpty)
         builder.report(exception
@@ -80,17 +87,15 @@ class CopyWithModelBuilder extends ModelBuilder {
             )
             .diagnostic);
       return;
-    }
+    } else {
+      var fieldMapping = {for (var f in clazzData.allFields) f.identifier.name: f};
 
-    var fieldMapping = {for (var f in clazzData.allFields) f.identifier.name: f};
-    // Retrieve parameters and validate types
-    final params = <Parameter>[];
-
-    final constructorParameters = clazzData.constructor!.parameters;
-    for (var cParm in constructorParameters) {
-      var field = fieldMapping[cParm.identifier.name];
-      if (field == null) throw exception.missingTypeAnnotationsError(className: cParm.identifier.name);
-      params.add(Parameter.fromFPD(field, cParm));
+      final constructorParameters = clazzData.constructor!.parameters;
+      for (var cParm in constructorParameters) {
+        var field = fieldMapping[cParm.identifier.name];
+        if (field == null) throw exception.missingTypeAnnotationsError(className: cParm.identifier.name);
+        params.add(Parameter.fromBothFieldAndFPD(field, cParm));
+      }
     }
 
     // Retrieve object and Undefined codes
@@ -122,6 +127,7 @@ class CopyWithModelBuilder extends ModelBuilder {
 
     final body = DeclarationCode.fromParts(
       [
+        '  ',
         clazz.identifier,
         if (clazzData.isGeneric) ...[
           '<',
@@ -179,11 +185,20 @@ class Parameter {
 
   /// FieldDeclaration field is class variable
   /// FormalParameterDeclaration cParam is constructor parameter
-  factory Parameter.fromFPD(FieldDeclaration field, FormalParameterDeclaration cParam) {
+  factory Parameter.fromBothFieldAndFPD(FieldDeclaration field, [FormalParameterDeclaration? cParam]) {
     return Parameter(
       isNullable: field.type.isNullable,
       name: field.identifier.name,
       typeCode: field.type.code,
+      isNamed: cParam?.isNamed ?? true,
+      isRequired: cParam?.isRequired ?? !field.type.isNullable,
+    );
+  }
+  factory Parameter.fromFPD(FormalParameterDeclaration cParam) {
+    return Parameter(
+      isNullable: cParam.type.isNullable,
+      name: cParam.identifier.name,
+      typeCode: cParam.type.code,
       isNamed: cParam.isNamed,
       isRequired: cParam.isRequired,
     );

@@ -57,5 +57,7 @@ class ConstructorModelBuilder extends ModelBuilder {
     ]);
 
     builder.declareInType(declaration);
+    clazzData.isModelConstructorDefined = true;
+    return;
   }
 }
