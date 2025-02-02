@@ -39,6 +39,7 @@ class ConstructorModelBuilder extends ModelBuilder {
     }
 
     final declaration = DeclarationCode.fromParts([
+      '\n',
       'const ${clazzData.constructorAlongWithClazzName}({',
       ...superParams,
       for (final field in fields) ...[

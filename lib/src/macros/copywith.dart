@@ -127,7 +127,7 @@ class CopyWithModelBuilder extends ModelBuilder {
 
     final body = DeclarationCode.fromParts(
       [
-        '  ',
+        '\n  ',
         clazz.identifier,
         if (clazzData.isGeneric) ...[
           '<',

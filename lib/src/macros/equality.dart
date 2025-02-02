@@ -113,7 +113,7 @@ class EqualityModelBuilder extends ModelBuilder with EqualityMacroException {
     var body = [jenkinsHash, '([', fieldsName.join(', '), ']);'];
 
     return builder.declareInType(
-      DeclarationCode.fromParts(['  ', integer.code, ' get hashCode {\n    return ', ...body, '\n  }']),
+      DeclarationCode.fromParts(['\n  ', integer.code, ' get hashCode {\n    return ', ...body, '\n  }']),
     );
   }
 }

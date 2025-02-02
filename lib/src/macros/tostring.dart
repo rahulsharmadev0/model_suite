@@ -29,7 +29,7 @@ class ToStringModelBuilder extends ModelBuilder with ToStringMacroException {
       ]
     ];
 
-    var parts = ['  ', string, ' toString() => "', clazzData.name, '(', ...fieldsCode, ')";'];
+    var parts = ['\n  ', string, ' toString() => "', clazzData.name, '(', ...fieldsCode, ')";'];
     builder.declareInType(DeclarationCode.fromParts(parts));
   }
 }
