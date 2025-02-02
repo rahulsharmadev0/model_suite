@@ -1,7 +1,8 @@
 import 'package:model_suite/src/macros/copywith.dart';
+import 'package:model_suite/src/model.dart';
 import 'package:test/test.dart';
 
-@CopyWithMacro()
+@CopyWithModel()
 class TestObject {
   final String name;
   final int value;
@@ -151,7 +152,7 @@ void main() {
   });
 }
 
-@CopyWithMacro()
+@CopyWithModel()
 class A<C> {
   final List<C?>? listOfSerializableField;
   final Set<C?>? setOfSerializableField;

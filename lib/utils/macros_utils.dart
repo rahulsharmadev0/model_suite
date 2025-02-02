@@ -207,29 +207,29 @@ extension NamedTypeAnnotationExtension on NamedTypeAnnotation {
   /// Follows the declaration of this type through any type aliases, until it
   /// reaches a [ClassDeclaration], or returns null if it does not bottom out on
   /// a class.
-  Future<ClassDeclaration?> classDeclaration(DefinitionBuilder builder) async {
+  Future<ClassDeclaration?> classDeclaration(DeclarationPhaseIntrospector builder) async {
     var typeDecl = await builder.typeDeclarationOf(identifier);
     while (typeDecl is TypeAliasDeclaration) {
       final aliasedType = typeDecl.aliasedType;
       if (aliasedType is! NamedTypeAnnotation) {
-        builder.report(Diagnostic(
+        // ignore: only_throw_errors
+        throw Diagnostic(
             DiagnosticMessage(
                 'Only fields with named types are allowed on serializable '
                 'classes',
                 target: asDiagnosticTarget),
-            Severity.error));
-        return null;
+            Severity.error);
       }
       typeDecl = await builder.typeDeclarationOf(aliasedType.identifier);
     }
     if (typeDecl is! ClassDeclaration) {
-      builder.report(Diagnostic(
+      // ignore: only_throw_errors
+      throw Diagnostic(
           DiagnosticMessage(
               'Only classes are supported as field types for serializable '
               'classes',
               target: asDiagnosticTarget),
-          Severity.error));
-      return null;
+          Severity.error);
     }
     return typeDecl;
   }

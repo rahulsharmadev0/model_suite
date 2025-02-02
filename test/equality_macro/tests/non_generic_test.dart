@@ -1,7 +1,8 @@
 import 'package:model_suite/src/macros/equality.dart';
+import 'package:model_suite/src/model.dart';
 import 'package:test/test.dart';
 
-@EqualityMacro()
+@EqualityModel()
 class A {
   final List<C> listOfSerializableField;
   final Set<C> setOfSerializableField;
@@ -13,7 +14,7 @@ class A {
   });
 }
 
-@EqualityMacro()
+@EqualityModel()
 class B {
   final List<C>? nullableListOfSerializableField;
   final Set<C>? nullableSetOfSerializableField;
@@ -26,7 +27,7 @@ class B {
   });
 }
 
-@EqualityMacro()
+@EqualityModel()
 class C {
   final int x;
   C({required this.x});
@@ -46,7 +47,7 @@ class Obj {
   int get hashCode => x.hashCode;
 }
 
-@EqualityMacro()
+@EqualityModel()
 class Parent {
   final int intField;
   final int? nullableIntField;
@@ -68,7 +69,7 @@ class Parent {
   });
 }
 
-@EqualityMacro()
+@EqualityModel()
 class Child extends Parent {
   final Obj objField;
   final Obj? nullableObjField;

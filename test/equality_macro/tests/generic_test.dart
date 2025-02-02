@@ -1,7 +1,8 @@
 import 'package:model_suite/src/macros/equality.dart';
+import 'package:model_suite/src/model.dart';
 import 'package:test/test.dart';
 
-@EqualityMacro()
+@EqualityModel()
 class A1<C extends String, B> {
   final List<C?>? listOfSerializableField;
   final Set<C> setOfSerializableField;
@@ -24,7 +25,7 @@ class A1<C extends String, B> {
   });
 }
 
-@EqualityMacro()
+@EqualityModel()
 class Point {
   final int x;
   final int y;

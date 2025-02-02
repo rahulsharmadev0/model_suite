@@ -2,6 +2,7 @@
 // import 'package:model_suite/dataclass.dart';
 // import 'package:model_suite/src/macros/copywith.dart';
 import 'package:model_suite/src/macros/copywith.dart';
+import 'package:model_suite/src/model.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -183,7 +184,7 @@ void main() {
   });
 }
 
-@CopyWithMacro()
+@CopyWithModel()
 class A {
   final List<C> listOfSerializableField;
   final Set<C> setOfSerializableField;
@@ -196,7 +197,7 @@ class A {
   });
 }
 
-@CopyWithMacro()
+@CopyWithModel()
 class B {
   final List<C>? nullableListOfSerializableField;
   final Set<C>? nullableSetOfSerializableField;
@@ -209,7 +210,7 @@ class B {
   });
 }
 
-@CopyWithMacro()
+@CopyWithModel()
 class C {
   final int x;
   C({required this.x});
@@ -229,7 +230,7 @@ class Obj {
   int get hashCode => x.hashCode;
 }
 
-@CopyWithMacro()
+@CopyWithModel()
 class Parent {
   final int intField;
   final int? nullableIntField;
@@ -251,7 +252,7 @@ class Parent {
   });
 }
 
-@CopyWithMacro()
+@CopyWithModel()
 class Child extends Parent {
   final Obj objField;
   final Obj? nullableObjField;

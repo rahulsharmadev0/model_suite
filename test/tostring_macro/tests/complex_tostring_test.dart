@@ -1,7 +1,8 @@
+import 'package:model_suite/src/model.dart';
 import 'package:test/test.dart';
 import 'package:model_suite/src/macros/tostring.dart';
 
-@ToStringMacro()
+@ToStringModel()
 class Address {
   final String street;
   final String? city;
@@ -10,7 +11,7 @@ class Address {
   const Address(this.street, this.city, this.zipCode);
 }
 
-@ToStringMacro()
+@ToStringModel()
 class Department {
   final String name;
   Employee? manager;
@@ -18,7 +19,7 @@ class Department {
   Department(this.name, this.manager);
 }
 
-@ToStringMacro()
+@ToStringModel()
 class Employee {
   final String name;
   final int age;

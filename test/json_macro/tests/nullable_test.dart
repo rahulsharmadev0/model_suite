@@ -1,7 +1,8 @@
 import 'package:model_suite/src/macros/json.dart';
+import 'package:model_suite/src/model.dart';
 import 'package:test/test.dart';
 
-@JsonMacro()
+@JsonModel()
 class BasicDataType {
   final int? nullableInt;
   final double? nullableDouble;
@@ -15,7 +16,7 @@ class BasicDataType {
   final DateTime $dateTime;
 }
 
-@JsonMacro()
+@JsonModel()
 class ListDataType {
   List<int>? nullableListInt;
   List<double>? nullableListDouble;
@@ -32,7 +33,7 @@ class SetDataType {
   Set<DateTime>? nullableSetDateTime;
 }
 
-@JsonMacro()
+@JsonModel()
 class MapKeyAsStringDataType {
   Map<String, int>? nullableMapInt;
   Map<String, double>? nullableMapDouble;

@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:macros/macros.dart' hide MacroException;
-import 'package:model_suite/src/macros_utils.dart';
+import 'package:model_suite/src/model.dart';
+import 'package:model_suite/utils/clazz_data.dart';
+import 'package:model_suite/utils/macros_utils.dart';
 
 /// Mixin that provides standardized error messages for JSON serialization/deserialization
 mixin _JsonMacroException {
@@ -39,57 +41,28 @@ mixin _JsonMacroException {
 
 /// Macro for generating JSON serialization and deserialization code
 macro
-class JsonMacro
-    with _JsonMacroException, _Converter, _ToJson, _FromJson
-    implements ClassDeclarationsMacro, ClassDefinitionMacro {
-  const JsonMacro();
+class JsonModelBuilder extends ModelBuilder
+    with _JsonMacroException, _Converter{
+  const JsonModelBuilder(super.clazzData, super.builder);
 
   @override
-  FutureOr<void> buildDeclarationsForClass(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
+  Future<void> build() async {
     if (clazz.typeParameters.isNotEmpty) throw cannotApplyToGenericClasses;
     if (clazz.hasAbstract || clazz.hasSealed || clazz.hasMixin) throw abstractMemberRestriction;
-
-    final ($map, $string, $dynamic) = await (
-      builder.codeFrom.map,
-      builder.codeFrom.string,
-      builder.codeFrom.dynamic,
-    ).wait;
-
-    final mapStringObject = $map.copyWith(typeArguments: [$string, $dynamic]);
-
-    await (
-      declareFromJson(clazz, builder, mapStringObject),
-      declareToJson(clazz, builder, mapStringObject),
-    ).wait;
-  }
-
-  @override
-  FutureOr<void> buildDefinitionForClass(
-    ClassDeclaration clazz,
-    TypeDefinitionBuilder builder,
-  ) async {
     final classData = await _SharedIntrospectionData.build(builder, clazz);
 
     await (
-      defineFromJson(clazz, builder, classData),
-      defineToJson(clazz, builder, classData),
+      defineFromJson(classData),
+      defineToJson(classData),
     ).wait;
-  }
-}
 
-//
-mixin _ToJson on _JsonMacroException, _Converter {
-  ///
-  /// Need to write the code for the `toJson` method.
-  ///
-  Future<void> defineToJson(
-    ClassDeclaration clazz,
-    TypeDefinitionBuilder builder,
+  }
+
+
+Future<void> defineToJson(
     _SharedIntrospectionData classData,
   ) async {
-    final listOfmethod = await builder.methodsOf(clazz);
-    final toJsonMethod = listOfmethod.firstWhereOrNull((m) => m.identifier.name == 'toJson');
-    if (toJsonMethod == null) return; // Exit if there is no `toJson` method.
+    if (clazzData.hasToJson) return; // Exit if there is no `toJson` method.
 
     var superclass = classData.superclass;
     if (superclass != null && superclass.isExactly('Object', dartCore)) {
@@ -99,10 +72,7 @@ mixin _ToJson on _JsonMacroException, _Converter {
     }
 
     final fields = classData.allFields;
-    final toJsonBuilder = await builder.buildMethod(toJsonMethod.identifier);
-
-    // TODO: Refactor
-    final parts = <Object>['=>  {\n'];
+    final parts = <Object>['  ', classData.mapCode, ' toJson() => {\n'];
 
     Future<Code> addEntryForField(FieldDeclaration field) async {
       final parts = <Object>['     '];
@@ -129,38 +99,17 @@ mixin _ToJson on _JsonMacroException, _Converter {
     }
 
     parts..addAll(await Future.wait(fields.map(addEntryForField)))
-    ..add(RawCode.fromParts([
-       if(superclass!=null) '...super.toJson(),',
-       '    };'
-        ]));
+    ..add(RawCode.fromParts([if(superclass!=null) '...super.toJson(),', '    };']));
 
-
-    toJsonBuilder.augment(FunctionBodyCode.fromParts(parts));
-  }
-
-  /// Declare the `toJson` method in the class.
-  Future<void> declareToJson(
-    ClassDeclaration clazz,
-    MemberDeclarationBuilder builder,
-    NamedTypeAnnotationCode mapStringObject,
-  ) async {
-    final methods = await builder.methodsOf(clazz);
-    if (methods.any((c) => c.identifier.name == 'toJson')) throw toJsonAlreadyExists;
-
-    var parts = ['  external ', mapStringObject, ' toJson();'];
     builder.declareInType(DeclarationCode.fromParts(parts));
   }
-}
 
-mixin _FromJson on _JsonMacroException, _Converter {
-  Future<void> defineFromJson(
-    ClassDeclaration clazz,
-    TypeDefinitionBuilder builder,
-    _SharedIntrospectionData classData,
+
+
+    Future<void> defineFromJson(
+    _SharedIntrospectionData classData
   ) async {
-    final constructors = await builder.constructorsOf(clazz);
-    final fromJsonMethod = constructors.firstWhereOrNull((c) => c.identifier.name == 'fromJson');
-    if (fromJsonMethod == null) return; // Exit if there is no `fromJson` method.
+    if (clazzData.hasFromJson) return; // Exit if there is no `fromJson` method.
 
     var superclass = classData.superclass;
     if (superclass != null && superclass.isExactly('Object', dartCore)) {
@@ -169,11 +118,6 @@ mixin _FromJson on _JsonMacroException, _Converter {
       if (superFromJson == null) throw fromJsonUnsupportedInheritance;
     }
 
-    final fromJsonBuilder = await builder.buildConstructor(fromJsonMethod.identifier);
-
-    final fields = classData.allFields;
-    final jsonParam = fromJsonMethod.positionalParameters.single.identifier;
-
     Future<Code> initializerForField(FieldDeclaration field) async {
       return RawCode.fromParts([
         field.identifier,
@@ -181,8 +125,8 @@ mixin _FromJson on _JsonMacroException, _Converter {
         await _convertTypeFromJson(
             field.type,
             RawCode.fromParts([
-              jsonParam,
-              "[r'",
+           
+              "json[r'",
               field.identifier.name,
               "']",
             ]),
@@ -191,31 +135,22 @@ mixin _FromJson on _JsonMacroException, _Converter {
       ]);
     }
 
-    final initializers = await Future.wait(fields.map(initializerForField));
+    final initializers = await Future.wait(classData.allFields.map(initializerForField));
 
-    if (superclass != null) {
-      initializers.add(RawCode.fromParts([
-        'super.fromJson(',
-        jsonParam,
-        ')',
-      ]));
-    }
+    List<Object> parts = [
+      ...['  ',clazz.identifier.name, '.fromJson(', classData.mapCode, ' json) :\n'],
 
-    fromJsonBuilder.augment(initializers: initializers);
-  }
-
-  Future<void> declareFromJson(
-    ClassDeclaration clazz,
-    MemberDeclarationBuilder builder,
-    NamedTypeAnnotationCode mapStringObject,
-  ) async {
-    final constr = await builder.constructorsOf(clazz);
-    if (constr.any((c) => c.identifier.name == 'fromJson')) throw fromJsonAlreadyExists;
-
-    var parts = ['  external ', clazz.identifier.name, '.fromJson(', mapStringObject, ' json);'];
+      for(var (i, f) in  initializers.indexed) ...[
+      '    ', f,
+      if(i != initializers.length - 1) ',\n',
+      ],
+      if(superclass != null) 'super.fromJson(json)',
+      ';'
+    ];
     builder.declareInType(DeclarationCode.fromParts(parts));
+    }
   }
-}
+
 
 //
 //
@@ -314,7 +249,7 @@ final class _SharedIntrospectionData {
 /// Mixin that provides standardized error messages for JSON serialization/deserialization
 mixin _Converter on _JsonMacroException {
   /// Validates that a type annotation is a named type and reports appropriate errors
-  NamedTypeAnnotation? _checkNamedType(TypeAnnotation type, Builder builder) {
+  NamedTypeAnnotation? _checkNamedType(TypeAnnotation type, DeclarationPhaseIntrospector builder) {
     if (type is NamedTypeAnnotation) return type;
     if (type is OmittedTypeAnnotation) throw missingExplicitType;
     throw invalidNamedType;
@@ -322,7 +257,7 @@ mixin _Converter on _JsonMacroException {
 
   /// Returns a [Code] object which is an expression that converts a JSON map
   /// (referenced by [jsonReference]) into an instance of type.
-  Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, DefinitionBuilder builder,
+  Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, DeclarationPhaseIntrospector builder,
       _SharedIntrospectionData classData) async {
     final type = _checkNamedType(rawType, builder);
     if (type == null) throw unsupportedTypeConversion;
@@ -413,7 +348,7 @@ mixin _Converter on _JsonMacroException {
   ///
   /// Null checks will be inserted if [rawType] is  nullable, unless
   /// [omitNullCheck] is `true`.
-  Future<Code> _convertTypeToJson(TypeAnnotation rawType, Code valueReference, DefinitionBuilder builder,
+  Future<Code> _convertTypeToJson(TypeAnnotation rawType, Code valueReference, DeclarationPhaseIntrospector builder,
       _SharedIntrospectionData classData,
       {bool omitNullCheck = false}) async {
     final type = _checkNamedType(rawType, builder);
@@ -473,7 +408,7 @@ mixin _Converter on _JsonMacroException {
     throw unsupportedTypeConversion;
   }
 
-  Future<Code> _convertMapKeyFromJson(TypeAnnotation keyType, Code keyReference, DefinitionBuilder builder,
+  Future<Code> _convertMapKeyFromJson(TypeAnnotation keyType, Code keyReference, DeclarationPhaseIntrospector builder,
       _SharedIntrospectionData classData) async {
     final type = _checkNamedType(keyType, builder);
     if (type == null) throw unsupportedTypeConversion;
@@ -485,7 +420,7 @@ mixin _Converter on _JsonMacroException {
     throw unsupportedTypeConversion;
   }
 
-  Future<Code> _convertMapKeyToJson(TypeAnnotation keyType, Code keyReference, DefinitionBuilder builder) async {
+  Future<Code> _convertMapKeyToJson(TypeAnnotation keyType, Code keyReference, DeclarationPhaseIntrospector builder) async {
     final type = _checkNamedType(keyType, builder);
     if (type == null) throw unsupportedTypeConversion;
 

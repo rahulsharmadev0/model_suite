@@ -1,77 +1,35 @@
 import 'dart:async';
-
-import 'package:collection/collection.dart';
 import 'package:macros/macros.dart' hide MacroException;
-
-import 'package:model_suite/src/macros_utils.dart';
+import 'package:model_suite/src/model.dart' show ModelBuilder;
+import 'package:model_suite/utils/clazz_data.dart';
+import 'package:model_suite/utils/macros_utils.dart';
 
 mixin ToStringMacroException {
   MacroException toStringError(DiagnosticTarget target) =>
       MacroException('Cannot generate a `toString` method for a class that already has one.', target: target);
 }
 
-macro
-class ToStringMacro
-    with ToStringMacroException, _ToString
-    implements ClassDefinitionMacro, ClassDeclarationsMacro {
-
-  const ToStringMacro();
+class ToStringModelBuilder extends ModelBuilder with ToStringMacroException {
+  const ToStringModelBuilder(super.clazzData, super.builder);
 
   @override
-  FutureOr<void> buildDeclarationsForClass(
-    ClassDeclaration clazz,
-    MemberDeclarationBuilder builder,
-  ) async {
-    await declareToString(clazz, builder);
-  }
+  Future<void> build() async {
+    if (clazzData.hasToString) return;
 
-  @override
-  FutureOr<void> buildDefinitionForClass(
-    ClassDeclaration clazz,
-    TypeDefinitionBuilder builder,
-  ) async =>
-      await defineToString(clazz, builder);
-}
-
-mixin _ToString on ToStringMacroException {
-  Future<MethodDeclaration?> getMethod(ClassDeclaration clazz, DeclarationPhaseIntrospector builder) async {
-    var methods = await builder.methodsOf(clazz);
-    return methods.firstWhereOrNull((e) => e.identifier.name == 'toString');
-  }
-
-  Future<void> defineToString(ClassDeclaration clazz, TypeDefinitionBuilder builder) async {
-    final toStringMethod = await getMethod(clazz, builder);
-    if (toStringMethod == null) return;
-
-    final (toStringMethodBuilder, fields, string) = await (
-      builder.buildMethod(toStringMethod.identifier),
-      builder.allFieldsOf(clazz),
-      builder.codeFrom.string,
-    ).wait;
-
+    final string = await builder.codeFrom.string;
+    var allFields = clazzData.allFields;
     final fieldsCode = <Object>[
-    for (var (i, f) in fields.indexed) 
-    ...[
-      f.identifier.name,
-      ': ',
-      r'${',
-      f.identifier,
-      '}',
-      if(i < fields.length - 1) ', '
+      for (var (i, f) in allFields.indexed) ...[
+        f.identifier.name,
+        ': ',
+        r'${',
+        f.identifier,
+        '.toString()}',
+        if (i < allFields.length - 1) ', '
       ]
     ];
 
-    var parts = ['=> "', clazz.identifier.name, '(', ...fieldsCode, ')";'];
-
-    toStringMethodBuilder.augment(FunctionBodyCode.fromParts(parts));
-  }
-
-  Future<void> declareToString(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
-    var toStringMethod = await getMethod(clazz, builder);
-    if (toStringMethod != null) throw toStringError(toStringMethod.asDiagnosticTarget);
-
-    // ignore: deprecated_member_use
-    var string = await builder.codeFrom.string;
-    builder.declareInType(DeclarationCode.fromParts(['  external ', string, ' toString();']));
+    var parts = ['  ', string, ' toString() => "', clazzData.name, '(', ...fieldsCode, ')";'];
+    builder.declareInType(DeclarationCode.fromParts(parts));
   }
 }

@@ -1,16 +1,15 @@
 import 'dart:async';
-import 'package:collection/collection.dart';
 import 'package:macros/macros.dart' hide MacroException;
+import 'package:model_suite/src/model.dart';
+import 'package:model_suite/utils/clazz_data.dart';
 
-import 'package:model_suite/src/macros_utils.dart';
+import 'package:model_suite/utils/macros_utils.dart';
 
 final _copywithMacro = Uri.parse('package:model_suite/src/macros/copywith.dart');
 
 const undefined = _Undefined();
 
-class _Undefined {
-  const _Undefined();
-}
+class _Undefined {const _Undefined();}
 
 /// Mixin that provides exception handling functionality for the CopyWith macro
 /// Contains methods to generate specific error messages for different scenarios
@@ -57,49 +56,45 @@ class _CopyWithMacroException {
 /// Macro implementation for generating copyWith functionality
 /// Implements both declaration and definition phase macros
 macro
-class CopyWithMacro implements ClassDeclarationsMacro {
+class CopyWithModelBuilder extends ModelBuilder {
+  const CopyWithModelBuilder(super.clazzData, super.builder);
+
   /// Fields that should be excluded from the copyWith method
-  final Set<String> immutable;
+  Set<String> get  immutable  => const {};
 
   /// Named constructor to use for generating copyWith (empty string for unnamed constructor)
-  final String constructor;
+   String get constructor => '';
 
-  const CopyWithMacro({this.constructor = '', this.immutable = const {}});
 
   @override
-  Future<void> buildDeclarationsForClass(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
+  Future<void> build() async {
+    if (clazzData.hasCopyWith) return;
     final _CopyWithMacroException exception = _CopyWithMacroException(clazz);
-    
     // Validate class is not abstract or sealed
     if (clazz.hasAbstract || clazz.hasSealed) throw exception.invalidClassTypeError();
-    // Check for existing copyWith method
-    final copyWith = await getMethod(clazz, builder);
-    if (copyWith != null) throw exception.existingCopyWithWarning();
-
-    // Retrieve method and constructor definitions
-    final (allFields, defConstructor) = await (
-      builder.allFieldsOf(clazz),
-      builder.defConstructorOf(clazz, constructor),
-    ).wait;
 
     // Validate constructor
-    if (defConstructor == null || constructor != defConstructor.identifier.name) {
+    if (!clazzData.hasConstructor) {
       throw exception.missingConstructorError();
-    } else if (defConstructor.parameters.isEmpty) {
-      if (allFields.isNotEmpty)
-        builder.report(
-            exception.missingParametersWarning(className:clazz.identifier.name, target:defConstructor.asDiagnosticTarget).diagnostic);
+    } else if (clazzData.constructor!.parameters.isEmpty) {
+      if (clazzData.allFields.isNotEmpty)
+        builder.report(exception
+            .missingParametersWarning(
+              className: clazzData.constructorAlongWithClazzName,
+              target: clazzData.constructor!.asDiagnosticTarget,
+            )
+            .diagnostic);
       return;
     }
 
-    var fieldMapping = {for (var field in allFields) field.identifier.name: field};
+    var fieldMapping = {for (var f in clazzData.allFields) f.identifier.name: f};
     // Retrieve parameters and validate types
     final params = <Parameter>[];
 
-    for (var cParm in defConstructor.parameters) {
+    final constructorParameters = clazzData.constructor!.parameters;
+    for (var cParm in constructorParameters) {
       var field = fieldMapping[cParm.identifier.name];
-      if (field == null) throw exception.missingTypeAnnotationsError();
-      // Generic constructor parameter
+      if (field == null) throw exception.missingTypeAnnotationsError(className:cParm.identifier.name);
       params.add(Parameter.fromFPD(field, cParm));
     }
 
@@ -129,24 +124,13 @@ class CopyWithMacro implements ClassDeclarationsMacro {
         if (i < params.length - 1) ', '
       ],
     ];
-    
-    var generics = [
-      for (final type in clazz.typeParameters) ...[
-        type.identifier,
-      ],
-    ].joinAsCode(', ');
-
-
-    // Generate method implementation with parameter handling
-    String constructorName = defConstructor.identifier.name;
-    if (constructor.isNotEmpty) constructorName = '.$constructorName';
 
     final body = DeclarationCode.fromParts(
       [
         clazz.identifier,
-         if (generics.isNotEmpty) ...[
+        if (clazzData.isGeneric) ...[
           '<',
-          ...generics,
+          ...clazzData.generics.map((e) => e.identifier).toList().joinAsCode(', '),
           '>',
         ],
         ' Function({',
@@ -160,20 +144,13 @@ class CopyWithMacro implements ClassDeclarationsMacro {
         '})\n  get copyWith => ({',
         ...args,
         '})\n  => ',
-        clazz.identifier,
-        constructorName,
+        clazzData.constructorAlongWithClazzName,
         '(',
         ...parmslist,
         ');\n',
       ],
     );
     return builder.declareInType(body);
-  }
-
-  /// Retrieves the copyWith method declaration if it exists
-  Future<MethodDeclaration?> getMethod(ClassDeclaration clazz, DeclarationPhaseIntrospector builder) async {
-    final methods = await builder.methodsOf(clazz);
-    return methods.firstWhereOrNull((m) => m.identifier.name == 'copyWith');
   }
 }
 

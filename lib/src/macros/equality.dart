@@ -1,7 +1,9 @@
 import 'package:collection/collection.dart' show DeepCollectionEquality, IterableExtension;
 import 'package:macros/macros.dart' hide MacroException;
 import 'package:meta/meta.dart';
-import 'package:model_suite/src/macros_utils.dart';
+import 'package:model_suite/src/model.dart';
+import 'package:model_suite/utils/clazz_data.dart';
+import 'package:model_suite/utils/macros_utils.dart';
 part 'utils/jenkins_hash.dart';
 
 /// URI for the equatable library
@@ -21,8 +23,6 @@ mixin EqualityMacroException {
 
   MacroException lateFieldError(String className, DiagnosticTarget target) =>
       MacroException('Cannot generate equality for `$className` class with late fields', target: target);
-
-
 }
 
 /// {@template equality}
@@ -31,65 +31,32 @@ mixin EqualityMacroException {
 /// 2. Generate the `hashCode` getter for consistent hashing
 /// 3. Handle deep equality comparison for collection fields
 /// {@endtemplate}
-macro
-class EqualityMacro with EqualityMacroException, _Equals, _HashCode implements ClassDeclarationsMacro {
-  /// {@macro equality}
-  const EqualityMacro();
-
-  Future<Iterable<String>> getFieldsName(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
-    final fields = await builder.allFieldsOf(clazz);
-    List<String> ls = [];
-    for (final f in fields) {
-      if (f.hasLate) throw lateFieldError(clazz.identifier.name, f.asDiagnosticTarget);
-      if (!f.hasStatic) ls.add(f.identifier.name);
-    }
-    return ls;
-  }
+class EqualityModelBuilder extends ModelBuilder with EqualityMacroException {
+  const EqualityModelBuilder(super.clazzData, super.builder);
 
   @override
-  Future<void> buildDeclarationsForClass(
-    ClassDeclaration clazz,
-    MemberDeclarationBuilder builder,
-  ) async {
-    /// Shared resources for equality and hashCode generation
-    final (equality, fields, hashCode) = await (
-      getEquality(clazz, builder),
-      getFieldsName(clazz, builder),
-      getHashCode(clazz, builder),
-    ).wait;
+  Future<void> build() async {
+    final fieldsName = clazzData.allFields.map((f) {
+      if (f.hasLate) throw lateFieldError(clazzData.name, clazzData.clazz.asDiagnosticTarget);
+      return f.identifier.name;
+    });
 
     await (
-      buildEquals(clazz, fields, equality, builder),
-      buildHashCode(clazz, fields, hashCode, builder),
+      buildEquals(fieldsName),
+      buildHashCode(fieldsName),
     ).wait;
   }
-}
 
-/// Mixin that handles the equality operator generation
-///
-/// Implements the logic for generating a proper `==` operator that:
-/// - Handles identical instance comparison
-/// - Compares runtime types
-/// - Performs deep equality comparison of fields
-mixin _Equals on EqualityMacroException {
-  Future<MethodDeclaration?> getEquality(ClassDeclaration clazz, DeclarationPhaseIntrospector builder) async {
-    final methods = await builder.methodsOf(clazz);
-    return methods.firstWhereOrNull((m) => m.identifier.name == '==');
-  }
+  /// Mixin that handles the equality operator generation
+  ///
+  /// Implements the logic for generating a proper `==` operator that:
+  /// - Handles identical instance comparison
+  /// - Compares runtime types
+  /// - Performs deep equality comparison of fields
+  Future<void> buildEquals(Iterable<String> fieldsName) async {
+    if (clazzData.hasEqualityOperator) return;
 
-  Future<void> buildEquals(
-    ClassDeclaration clazz,
-    Iterable<String> fieldsName,
-    MethodDeclaration? equality,
-    MemberDeclarationBuilder builder,
-  ) async {
-    if (equality != null) throw equalityOperatorError(equality.asDiagnosticTarget);
-
-    var generics = [
-      for (final type in clazz.typeParameters) ...[
-        type.identifier,
-      ],
-    ].joinAsCode(', ');
+    var generics = clazzData.generics.map((g) => g.name);
 
     final (boolean, identical, deepEquals) = await (
       builder.codeFrom.bool,
@@ -113,7 +80,7 @@ mixin _Equals on EqualityMacroException {
         boolean,
         ' operator==(',
         ' covariant ',
-        clazz.identifier,
+        clazzData.identifier,
         if (generics.isNotEmpty) ...[
           '<',
           ...generics,
@@ -123,44 +90,27 @@ mixin _Equals on EqualityMacroException {
         '  if(',
         identical,
         '(this, other)) return true;\n',
-        '    return other is ${clazz.identifier.name} && ',
+        '    return other is ${clazzData.name} && ',
         'other.runtimeType == runtimeType',
         ...body,
         '  }'
       ]),
     );
   }
-}
 
-/// Mixin that handles the hashCode generation
-///
-/// Implements the logic for generating a consistent hashCode that:
-/// - Uses Jenkins hash algorithm for combining field values
-/// - Handles all field types including collections
-/// - Maintains hash consistency with equality implementation
-mixin _HashCode on EqualityMacroException {
-  Future<MethodDeclaration?> getHashCode(ClassDeclaration clazz, DeclarationPhaseIntrospector builder) async {
-    final methods = await builder.methodsOf(clazz);
-    return methods.firstWhereOrNull((m) => m.identifier.name == 'hashCode');
-  }
-
-  Future<void> buildHashCode(
-    ClassDeclaration clazz,
-    Iterable<String> fieldsName,
-    MethodDeclaration? hashCode,
-    MemberDeclarationBuilder builder,
-  ) async {
-    if (hashCode != null) throw createHashCodeError(hashCode.asDiagnosticTarget);
+  /// Mixin that handles the hashCode generation
+  ///
+  /// Implements the logic for generating a consistent hashCode that:
+  /// - Uses Jenkins hash algorithm for combining field values
+  /// - Handles all field types including collections
+  /// - Maintains hash consistency with equality implementation
+  Future<void> buildHashCode(Iterable<String> fieldsName) async {
+    if (clazzData.hasHashCode) return;
 
     final (integer, jenkinsHash) =
         await (builder.codeFrom.int, builder.codeFrom.get('jenkinsHash', _equality)).wait;
 
-    var body = [
-      jenkinsHash,
-      '([',
-      fieldsName.join(', '),
-      ']);',
-    ];
+    var body = [jenkinsHash, '([', fieldsName.join(', '), ']);'];
 
     return builder.declareInType(
       DeclarationCode.fromParts(['  ', integer.code, ' get hashCode {\n    return ', ...body, '\n  }']),

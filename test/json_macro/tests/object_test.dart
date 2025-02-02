@@ -1,19 +1,20 @@
 import 'package:model_suite/src/macros/json.dart';
+import 'package:model_suite/src/model.dart';
 import 'package:test/test.dart';
 
-@JsonMacro()
+@JsonModel()
 class A {
   final int? nullableInt;
   final double? nullableDouble;
 }
 
-@JsonMacro()
+@JsonModel()
 class ObjectClass extends A {
   final String? nullableString;
   final bool? nullableBool;
 }
 
-@JsonMacro()
+@JsonModel()
 class BasicDataType {
   final DateTime? nullableDateTime;
   final int $int;
