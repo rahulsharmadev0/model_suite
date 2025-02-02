@@ -1,9 +1,9 @@
 import 'package:collection/collection.dart' show DeepCollectionEquality, IterableExtension;
 import 'package:macros/macros.dart' hide MacroException;
 import 'package:meta/meta.dart';
-import 'package:model_suite/src/model.dart';
-import 'package:model_suite/utils/clazz_data.dart';
-import 'package:model_suite/utils/macros_utils.dart';
+import 'package:model_suite/model.dart';
+import 'package:model_suite/src/utils/clazz_data.dart';
+import 'package:model_suite/src/utils/macros_utils.dart';
 part 'utils/jenkins_hash.dart';
 
 /// URI for the equatable library

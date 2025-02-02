@@ -5,9 +5,9 @@ import 'package:macros/macros.dart';
 import 'package:model_suite/src/macros/constructor.dart';
 import 'package:model_suite/src/macros/copywith.dart';
 import 'package:model_suite/src/macros/json.dart';
-import 'package:model_suite/utils/clazz_data.dart';
-import 'macros/equality.dart';
-import 'macros/tostring.dart';
+import 'package:model_suite/src/utils/clazz_data.dart';
+import 'src/macros/equality.dart';
+import 'src/macros/tostring.dart';
 
 abstract class ModelBuilder {
   final ClazzData clazzData;

@@ -27,7 +27,10 @@ A powerful macro-based code generation library for Dart that helps reduce boiler
 1. Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
-  model_suite: ^0.1.0
+  model_suite:
+    git:
+      url: https://github.com/rahulsharmadev0/model_suite.git
+      ref: dev
 ```
 
 2. Basic usage example:

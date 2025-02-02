@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:macros/macros.dart' hide MacroException;
-import 'package:model_suite/src/model.dart';
-import 'package:model_suite/utils/clazz_data.dart';
+import 'package:model_suite/model.dart';
+import 'package:model_suite/src/utils/clazz_data.dart';
 
-import 'package:model_suite/utils/macros_utils.dart';
+import 'package:model_suite/src/utils/macros_utils.dart';
 
 final _copywithMacro = Uri.parse('package:model_suite/src/macros/copywith.dart');
 

@@ -1,4 +1,4 @@
-import 'package:model_suite/src/model.dart';
+import 'package:model_suite/model.dart';
 import 'package:test/test.dart';
 import 'package:model_suite/src/macros/tostring.dart';
 
