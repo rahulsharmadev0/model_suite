@@ -1,15 +1,12 @@
 import 'dart:async';
 
 import 'package:macros/macros.dart';
+import 'package:model_suite/src/macros/constructor.dart';
 import 'package:model_suite/src/macros/copywith.dart';
 import 'package:model_suite/src/macros/json.dart';
 import 'package:model_suite/utils/clazz_data.dart';
 import 'macros/equality.dart';
 import 'macros/tostring.dart';
-
-
-
-
 
 abstract class ModelBuilder {
   final ClazzData clazzData;
@@ -26,19 +23,21 @@ abstract interface class ModelMacro implements ClassDeclarationsMacro {
 
 macro
 class Model extends ModelMacro {
-  const Model();
+  final String constructorName;
+  final String superConstructorName;
+  const Model({this.constructorName ='', this.superConstructorName=''});
 
   @override
   Future<void> buildDeclarationsForClass(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
-    final clazzData = await ClazzData.build(clazz, builder, '', '');
+    var clazzData = await ClazzData.build(clazz, builder, constructorName, superConstructorName);
 
     final builders = <ModelBuilder>[
+      ConstructorModelBuilder(clazzData, builder),
       JsonModelBuilder(clazzData, builder),
       EqualityModelBuilder(clazzData, builder),
-      CopyWithModelBuilder(clazzData, builder),
       ToStringModelBuilder(clazzData, builder),
+      CopyWithModelBuilder(clazzData, builder),
     ];
-
     await builders.map((e) => e.build()).wait;
   }
 }
@@ -86,5 +85,16 @@ class ToStringModel extends ModelMacro {
     final clazzData = await ClazzData.build(clazz, builder, '', '');
     final toStringBuilder = ToStringModelBuilder(clazzData, builder);
     return toStringBuilder.build();
+  }
+}
+
+macro
+class ConstructorModel extends ModelMacro {
+  const ConstructorModel();
+  @override
+  FutureOr<void> buildDeclarationsForClass(ClassDeclaration clazz, MemberDeclarationBuilder builder) async {
+    final clazzData = await ClazzData.build(clazz, builder, '', '');
+    final constructorBuilder = ConstructorModelBuilder(clazzData, builder);
+    return constructorBuilder.build();
   }
 }

@@ -40,9 +40,7 @@ mixin _JsonMacroException {
 }
 
 /// Macro for generating JSON serialization and deserialization code
-macro
-class JsonModelBuilder extends ModelBuilder
-    with _JsonMacroException, _Converter{
+class JsonModelBuilder extends ModelBuilder with _JsonMacroException, _Converter {
   const JsonModelBuilder(super.clazzData, super.builder);
 
   @override
@@ -55,11 +53,9 @@ class JsonModelBuilder extends ModelBuilder
       defineFromJson(classData),
       defineToJson(classData),
     ).wait;
-
   }
 
-
-Future<void> defineToJson(
+  Future<void> defineToJson(
     _SharedIntrospectionData classData,
   ) async {
     if (clazzData.hasToJson) return; // Exit if there is no `toJson` method.
@@ -98,17 +94,14 @@ Future<void> defineToJson(
       return RawCode.fromParts(parts);
     }
 
-    parts..addAll(await Future.wait(fields.map(addEntryForField)))
-    ..add(RawCode.fromParts([if(superclass!=null) '...super.toJson(),', '    };']));
+    parts
+      ..addAll(await Future.wait(fields.map(addEntryForField)))
+      ..add(RawCode.fromParts([if (superclass != null) '...super.toJson(),', '    };']));
 
     builder.declareInType(DeclarationCode.fromParts(parts));
   }
 
-
-
-    Future<void> defineFromJson(
-    _SharedIntrospectionData classData
-  ) async {
+  Future<void> defineFromJson(_SharedIntrospectionData classData) async {
     if (clazzData.hasFromJson) return; // Exit if there is no `fromJson` method.
 
     var superclass = classData.superclass;
@@ -125,7 +118,6 @@ Future<void> defineToJson(
         await _convertTypeFromJson(
             field.type,
             RawCode.fromParts([
-           
               "json[r'",
               field.identifier.name,
               "']",
@@ -138,19 +130,18 @@ Future<void> defineToJson(
     final initializers = await Future.wait(classData.allFields.map(initializerForField));
 
     List<Object> parts = [
-      ...['  ',clazz.identifier.name, '.fromJson(', classData.mapCode, ' json) :\n'],
-
-      for(var (i, f) in  initializers.indexed) ...[
-      '    ', f,
-      if(i != initializers.length - 1) ',\n',
+      ...['  ', clazz.identifier.name, '.fromJson(', classData.mapCode, ' json) :\n'],
+      for (var (i, f) in initializers.indexed) ...[
+        '    ',
+        f,
+        if (i != initializers.length - 1) ',\n',
       ],
-      if(superclass != null) 'super.fromJson(json)',
+      if (superclass != null) 'super.fromJson(json)',
       ';'
     ];
     builder.declareInType(DeclarationCode.fromParts(parts));
-    }
   }
-
+}
 
 //
 //
@@ -257,8 +248,8 @@ mixin _Converter on _JsonMacroException {
 
   /// Returns a [Code] object which is an expression that converts a JSON map
   /// (referenced by [jsonReference]) into an instance of type.
-  Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference, DeclarationPhaseIntrospector builder,
-      _SharedIntrospectionData classData) async {
+  Future<Code> _convertTypeFromJson(TypeAnnotation rawType, Code jsonReference,
+      DeclarationPhaseIntrospector builder, _SharedIntrospectionData classData) async {
     final type = _checkNamedType(rawType, builder);
     if (type == null) throw unsupportedTypeConversion;
 
@@ -348,8 +339,8 @@ mixin _Converter on _JsonMacroException {
   ///
   /// Null checks will be inserted if [rawType] is  nullable, unless
   /// [omitNullCheck] is `true`.
-  Future<Code> _convertTypeToJson(TypeAnnotation rawType, Code valueReference, DeclarationPhaseIntrospector builder,
-      _SharedIntrospectionData classData,
+  Future<Code> _convertTypeToJson(TypeAnnotation rawType, Code valueReference,
+      DeclarationPhaseIntrospector builder, _SharedIntrospectionData classData,
       {bool omitNullCheck = false}) async {
     final type = _checkNamedType(rawType, builder);
     if (type == null) throw unsupportedTypeConversion;
@@ -408,19 +399,20 @@ mixin _Converter on _JsonMacroException {
     throw unsupportedTypeConversion;
   }
 
-  Future<Code> _convertMapKeyFromJson(TypeAnnotation keyType, Code keyReference, DeclarationPhaseIntrospector builder,
-      _SharedIntrospectionData classData) async {
+  Future<Code> _convertMapKeyFromJson(TypeAnnotation keyType, Code keyReference,
+      DeclarationPhaseIntrospector builder, _SharedIntrospectionData classData) async {
     final type = _checkNamedType(keyType, builder);
     if (type == null) throw unsupportedTypeConversion;
 
     var classDecl = await type.classDeclaration(builder);
     if (classDecl == null) throw unsupportedTypeConversion;
 
-    if(classDecl.identifier.name == 'String') return keyReference;
+    if (classDecl.identifier.name == 'String') return keyReference;
     throw unsupportedTypeConversion;
   }
 
-  Future<Code> _convertMapKeyToJson(TypeAnnotation keyType, Code keyReference, DeclarationPhaseIntrospector builder) async {
+  Future<Code> _convertMapKeyToJson(
+      TypeAnnotation keyType, Code keyReference, DeclarationPhaseIntrospector builder) async {
     final type = _checkNamedType(keyType, builder);
     if (type == null) throw unsupportedTypeConversion;
 

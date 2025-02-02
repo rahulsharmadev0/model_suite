@@ -69,7 +69,7 @@ extension X on DeclarationPhaseIntrospector {
       allFields.addAll(await fieldsOf(superclass));
       superclass = await superclassOf(superclass);
     }
-    return allFields..removeWhere((f) => f.hasStatic);
+    return allFields;
   }
 }
 

@@ -9,7 +9,9 @@ final _copywithMacro = Uri.parse('package:model_suite/src/macros/copywith.dart')
 
 const undefined = _Undefined();
 
-class _Undefined {const _Undefined();}
+class _Undefined {
+  const _Undefined();
+}
 
 /// Mixin that provides exception handling functionality for the CopyWith macro
 /// Contains methods to generate specific error messages for different scenarios
@@ -17,54 +19,47 @@ class _CopyWithMacroException {
   final ClassDeclaration clazz;
   const _CopyWithMacroException(this.clazz);
 
-  String get className =>  clazz.identifier.name;
+  String get className => clazz.identifier.name;
   DiagnosticTarget get classTarget => clazz.asDiagnosticTarget;
 
   /// Warns when a copyWith method already exists in the target class
   MacroException existingCopyWithWarning({String? className, DiagnosticTarget? target}) => MacroException(
       'A `copyWith` method already exists in this class. To use @CopyWithMacro, either remove the existing copyWith method or remove the macro annotation.',
-      target: target??clazz.asDiagnosticTarget,
+      target: target ?? clazz.asDiagnosticTarget,
       severity: Severity.warning);
 
   /// Error when the target class is missing a required constructor
   MacroException missingConstructorError({String? className, DiagnosticTarget? target}) => MacroException(
-      'Class `${className??this.className}` is missing the required constructor. Please define a constructor matching the name specified in @CopyWithMacro annotation. If using default constructor, ensure it exists.',
+      'Class `${className ?? this.className}` is missing the required constructor. Please define a constructor matching the name specified in @CopyWithMacro annotation. If using default constructor, ensure it exists.',
       target: target ?? classTarget);
-
-  
 
   /// Error when constructor parameters are missing type annotations
   MacroException missingTypeAnnotationsError({String? className, DiagnosticTarget? target}) => MacroException(
-      'All constructor parameters in `${className??this.className}` must have explicit type annotations. Found nullable or dynamic parameters which are not supported. Please add type annotations to all parameters.',
+      'All constructor parameters in `${className ?? this.className}` must have explicit type annotations. Found nullable or dynamic parameters which are not supported. Please add type annotations to all parameters.',
       target: target ?? classTarget);
 
   /// Error when the class is abstract or sealed
   MacroException invalidClassTypeError({String? className, DiagnosticTarget? target}) => MacroException(
-      'Class `${className??this.className}` cannot be abstract or sealed when using @CopyWithMacro. Remove the abstract/sealed modifier or use a concrete class instead.',
+      'Class `${className ?? this.className}` cannot be abstract or sealed when using @CopyWithMacro. Remove the abstract/sealed modifier or use a concrete class instead.',
       target: target ?? classTarget);
 
   // Error when the class has no parameters in the constructor
-  MacroException missingParametersWarning({String? className, DiagnosticTarget? target}) =>
-      MacroException(
-          'Class `${className??this.className}` has no parameters in the constructor. Please add parameters to the constructor to use @CopyWithMacro.',
-          target: target ?? classTarget,
-          severity: Severity.warning);
-
-        
+  MacroException missingParametersWarning({String? className, DiagnosticTarget? target}) => MacroException(
+      'Class `${className ?? this.className}` has no parameters in the constructor. Please add parameters to the constructor to use @CopyWithMacro.',
+      target: target ?? classTarget,
+      severity: Severity.warning);
 }
 
 /// Macro implementation for generating copyWith functionality
 /// Implements both declaration and definition phase macros
-macro
 class CopyWithModelBuilder extends ModelBuilder {
   const CopyWithModelBuilder(super.clazzData, super.builder);
 
   /// Fields that should be excluded from the copyWith method
-  Set<String> get  immutable  => const {};
+  Set<String> get immutable => const {};
 
   /// Named constructor to use for generating copyWith (empty string for unnamed constructor)
-   String get constructor => '';
-
+  String get constructor => '';
 
   @override
   Future<void> build() async {
@@ -94,7 +89,7 @@ class CopyWithModelBuilder extends ModelBuilder {
     final constructorParameters = clazzData.constructor!.parameters;
     for (var cParm in constructorParameters) {
       var field = fieldMapping[cParm.identifier.name];
-      if (field == null) throw exception.missingTypeAnnotationsError(className:cParm.identifier.name);
+      if (field == null) throw exception.missingTypeAnnotationsError(className: cParm.identifier.name);
       params.add(Parameter.fromFPD(field, cParm));
     }
 

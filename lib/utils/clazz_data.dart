@@ -9,20 +9,21 @@ import 'macros_utils.dart';
 class ClazzData {
   /// The declaration of the class we are generating for.
   final ClassDeclaration clazz;
-  final ClassDeclaration? superClazz;
+  final List<FieldDeclaration> clazzfields;
   final ConstructorDeclaration? constructor;
-  final ConstructorDeclaration? superConstructor;
 
-  /// All non static fields on the [clazz].
-  final Iterable<FieldDeclaration> allFields;
+  final ClassDeclaration? superClazz;
+  final List<FieldDeclaration> superClazzFields;
+  final ConstructorDeclaration? superConstructor;
   final Iterable<MethodDeclaration> clazzMethods;
 
   const ClazzData(
       {required this.clazz,
-      required this.superClazz,
       required this.clazzMethods,
-      required this.allFields,
+      required this.clazzfields,
       required this.constructor,
+      required this.superClazz,
+      required this.superClazzFields,
       required this.superConstructor});
 
   /// Builds the shared introspection data for the given [clazz].
@@ -32,24 +33,29 @@ class ClazzData {
     String constructorName,
     String superConstructorName,
   ) async {
-    final (allFields, methods, constructors, superClazz) = await (
-      builder.allFieldsOf(clazz),
+    final (fields, methods, constructors, superClazz) = await (
+      builder.fieldsOf(clazz),
       builder.methodsOf(clazz),
       builder.constructorsOf(clazz),
       builder.superclassOf(clazz)
     ).wait;
 
-    ConstructorDeclaration? superConstructor;
-    if (superClazz != null) {
-      superConstructor = (await builder.constructorsOf(superClazz))
-          .firstWhereOrNull((e) => e.identifier.name == superConstructorName);
+    List<ConstructorDeclaration>? superConstructor;
+    List<FieldDeclaration>? superFields;
+
+    if (superClazz != null && superClazz.identifier.name != 'Object') {
+      (superFields, superConstructor) = await (
+        builder.fieldsOf(superClazz),
+        builder.constructorsOf(superClazz),
+      ).wait;
     }
     return ClazzData(
       clazz: clazz,
-      allFields: allFields.where((f) => !f.hasStatic),
+      clazzfields: fields.where((f) => !f.hasStatic).toList(),
+      superClazzFields: superFields?.where((f) => !f.hasStatic).toList() ?? [],
       clazzMethods: methods.where((f) => !f.hasStatic),
       superClazz: superClazz,
-      superConstructor: superConstructor,
+      superConstructor: superConstructor?.firstWhereOrNull((e) => e.identifier.name == superConstructorName),
       constructor: constructors.firstWhereOrNull((e) => e.identifier.name == constructorName),
     );
   }
@@ -62,6 +68,8 @@ extension SharedDataExtension on ClazzData {
   bool get hasHashCode => clazzMethods.any((f) => f.identifier.name == 'hashCode');
   bool get hasToString => clazzMethods.any((f) => f.identifier.name == 'toString');
   bool get hasEqualityOperator => clazzMethods.any((f) => f.identifier.name == '==');
+
+  Iterable<FieldDeclaration> get allFields => clazzfields.followedBy(superClazzFields);
 
   bool get hasSuperConstructor => superConstructor != null;
 
