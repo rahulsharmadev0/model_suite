@@ -4,19 +4,12 @@ description: >
   compromising on the features.
 
 version: 1.0.0
-original_repository: https://github.com/rrousselGit/freezed
-
-# Acknowledgments section to credit the original repository
-acknowledgments:
-  - "This package uses code from the Freezed package by rrousselGit."
-  - "Original repository: https://github.com/rrousselGit/freezed"
-  - "Code is licensed under the MIT License."
 
 environment:
   sdk: ">=3.5.0-0.0-dev <4.0.0"
 
 dependencies:
-  collection: ^1.19.1
+  collection: ">=1.19.0"
   macros: ^0.1.3-main.0
   meta: ^1.15.0
 
