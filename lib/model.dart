@@ -2,12 +2,12 @@ library model;
 
 import 'dart:async';
 import 'package:macros/macros.dart';
-import 'package:model_suite/src/macros/constructor.dart';
-import 'package:model_suite/src/macros/copywith.dart';
-import 'package:model_suite/src/macros/json.dart';
+import 'package:model_suite/src/constructor.dart';
+import 'package:model_suite/src/copywith.dart';
+import 'package:model_suite/src/json.dart';
 import 'package:model_suite/src/utils/clazz_data.dart';
-import 'src/macros/equality.dart';
-import 'src/macros/tostring.dart';
+import 'src/equality.dart';
+import 'src/tostring.dart';
 
 abstract class ModelBuilder {
   final ClazzData clazzData;
